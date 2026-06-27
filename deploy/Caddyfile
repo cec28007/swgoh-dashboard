@@ -1,0 +1,6 @@
+# Caddy reverse-proxies your subdomain to the local ask_server.py.
+# Caddy gets you HTTPS automatically. Copy to /etc/caddy/Caddyfile and
+# replace the hostname, then: systemctl restart caddy
+swgoh.yourdomain.com {
+    reverse_proxy 127.0.0.1:8787
+}

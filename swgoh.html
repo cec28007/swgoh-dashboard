@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SWGOH Roster</title>
+<style>
+  :root { --bg:#0b0e14; --card:#151a23; --line:#222b39; --txt:#e6edf3;
+          --muted:#8b97a7; --accent:#ffd54a; --good:#4ade80; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt);
+         font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { padding:20px 16px 8px; }
+  h1 { margin:0; font-size:20px; }
+  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  .wrap { max-width:1000px; margin:0 auto; padding:0 16px 60px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+          gap:10px; margin:16px 0; }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+  .kpi .label { color:var(--muted); font-size:12px; }
+  .kpi .val { font-size:20px; font-weight:600; margin-top:2px; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
+  input, select, button { background:var(--card); color:var(--txt);
+          border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-size:14px; }
+  input[type=search] { flex:1; min-width:160px; }
+  button { cursor:pointer; }
+  table { width:100%; border-collapse:collapse; background:var(--card);
+          border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  th, td { text-align:left; padding:9px 11px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; font-size:12px; cursor:pointer; user-select:none; }
+  td.num, th.num { text-align:right; }
+  tr:last-child td { border-bottom:none; }
+  a { color:var(--accent); text-decoration:none; }
+  .pill { font-size:11px; padding:1px 7px; border-radius:99px; border:1px solid var(--line); color:var(--muted); }
+  .ask { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin:18px 0; }
+  .ask textarea { width:100%; min-height:64px; background:var(--bg); color:var(--txt);
+          border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; resize:vertical; }
+  .ask .row { display:flex; gap:8px; margin-top:8px; }
+  .answer { white-space:pre-wrap; margin-top:12px; padding:12px; background:var(--bg);
+          border:1px solid var(--line); border-radius:8px; display:none; }
+  .muted { color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding-bottom:0">
+    <h1>⚔️ SWGOH Roster — <span id="pname">—</span></h1>
+    <div class="sub" id="psub">loading…</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="kpis" id="kpis"></div>
+
+  <div class="ask">
+    <strong>🤖 Ask about your roster</strong>
+    <div class="muted" style="font-size:12px;margin:4px 0 8px">
+      e.g. "What should I farm next for a strong Sith team?" — powered by Claude, using the roster below as context.
+    </div>
+    <textarea id="q" placeholder="Ask a strategy question…"></textarea>
+    <div class="row">
+      <button id="askBtn">Ask</button>
+      <span class="muted" id="askStatus" style="align-self:center"></span>
+    </div>
+    <div class="answer" id="answer"></div>
+  </div>
+
+  <div class="controls">
+    <input type="search" id="search" placeholder="Filter by name…" />
+    <select id="typeFilter">
+      <option value="all">All units</option>
+      <option value="character">Characters</option>
+      <option value="ship">Ships</option>
+    </select>
+    <select id="starFilter">
+      <option value="0">Any stars</option>
+      <option value="7">7★ only</option>
+      <option value="6">6★+</option>
+    </select>
+  </div>
+
+  <table id="roster">
+    <thead>
+      <tr>
+        <th data-k="name">Unit</th>
+        <th data-k="type">Type</th>
+        <th class="num" data-k="stars">★</th>
+        <th class="num" data-k="gear_level">Gear</th>
+        <th class="num" data-k="relic">Relic</th>
+        <th class="num" data-k="zetas">Zeta</th>
+        <th class="num" data-k="omicrons">Omi</th>
+        <th class="num" data-k="power">Power</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div class="muted" style="font-size:12px;margin-top:8px" id="foot"></div>
+</div>
+
+<script src="swgoh_data.js"></script>
+<script>
+  const D = window.SWGOH_DATA || { units: [] };
+  const fmt = n => (n == null ? "—" : n.toLocaleString());
+  const $ = s => document.querySelector(s);
+
+  $("#pname").textContent = D.name || "Unknown";
+  $("#psub").textContent =
+    `Ally ${D.ally_code || "—"} · ${D.guild_name || "no guild"} · ` +
+    `updated ${D.last_updated || "?"} · source: ${D.source || "?"}`;
+
+  const chars = D.units.filter(u => u.type === "character");
+  const ships = D.units.filter(u => u.type === "ship");
+  const relics = chars.filter(u => u.relic > 0).length;
+  const sevenStar = D.units.filter(u => u.stars === 7).length;
+  const kpis = [
+    ["Galactic Power", fmt(D.galactic_power)],
+    ["Character GP", fmt(D.character_gp)],
+    ["Ship GP", fmt(D.ship_gp)],
+    ["Characters", fmt(chars.length)],
+    ["Ships", fmt(ships.length)],
+    ["7★ units", fmt(sevenStar)],
+    ["Relic'd toons", fmt(relics)],
+  ];
+  $("#kpis").innerHTML = kpis
+    .map(([l, v]) => `<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div></div>`)
+    .join("");
+
+  let sortKey = "power", sortDir = -1;
+  function render() {
+    const q = $("#search").value.toLowerCase();
+    const tf = $("#typeFilter").value;
+    const sf = +$("#starFilter").value;
+    let rows = D.units.filter(u =>
+      (!q || (u.name || "").toLowerCase().includes(q)) &&
+      (tf === "all" || u.type === tf) &&
+      (!sf || u.stars >= sf));
+    rows.sort((a, b) => {
+      const x = a[sortKey], y = b[sortKey];
+      if (typeof x === "string") return sortDir * x.localeCompare(y);
+      return sortDir * ((x || 0) - (y || 0));
+    });
+    $("#roster tbody").innerHTML = rows.map(u => `
+      <tr>
+        <td>${u.url ? `<a href="${u.url}" target="_blank" rel="noopener">${u.name}</a>` : u.name}</td>
+        <td><span class="pill">${u.type}</span></td>
+        <td class="num">${u.stars || 0}</td>
+        <td class="num">${u.type === "ship" ? "—" : (u.gear_level || 0)}</td>
+        <td class="num">${u.relic ? "R" + u.relic : "—"}</td>
+        <td class="num">${u.zetas || 0}</td>
+        <td class="num">${u.omicrons || 0}</td>
+        <td class="num">${fmt(u.power)}</td>
+      </tr>`).join("");
+    $("#foot").textContent = `${rows.length} of ${D.units.length} units shown`;
+  }
+  document.querySelectorAll("th[data-k]").forEach(th =>
+    th.addEventListener("click", () => {
+      const k = th.dataset.k;
+      if (k === sortKey) sortDir *= -1; else { sortKey = k; sortDir = -1; }
+      render();
+    }));
+  ["#search", "#typeFilter", "#starFilter"].forEach(s =>
+    $(s).addEventListener("input", render));
+  render();
+
+  // --- Ask box: posts to a server endpoint that calls Claude with the roster ---
+  $("#askBtn").addEventListener("click", async () => {
+    const question = $("#q").value.trim();
+    if (!question) return;
+    const ans = $("#answer"), st = $("#askStatus");
+    st.textContent = "thinking…"; ans.style.display = "none";
+    try {
+      const r = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, roster: D }),
+      });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      ans.textContent = j.answer || JSON.stringify(j);
+      ans.style.display = "block"; st.textContent = "";
+    } catch (e) {
+      st.textContent = "";
+      ans.style.display = "block";
+      ans.textContent =
+        "The Ask endpoint isn't wired up yet (" + e.message + ").\n" +
+        "Once the Claude /api/ask service is deployed on the VM, this will answer here.";
+    }
+  });
+</script>
+</body>
+</html>

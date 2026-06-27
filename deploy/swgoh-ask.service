@@ -1,0 +1,20 @@
+# Serves the dashboard + /api/ask endpoint. Copy to /etc/systemd/system/,
+# edit User= and the path, then: systemctl enable --now swgoh-ask
+#
+# The API key lives ONLY here (root-readable unit file), never in git.
+[Unit]
+Description=SWGOH dashboard + Claude Ask endpoint
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/swgoh-dashboard
+Environment=ANTHROPIC_API_KEY=sk-ant-REPLACE-ME
+Environment=ASK_MODEL=claude-sonnet-4-6
+Environment=ASK_PORT=8787
+ExecStart=/usr/bin/python3 /home/ubuntu/swgoh-dashboard/ask_server.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

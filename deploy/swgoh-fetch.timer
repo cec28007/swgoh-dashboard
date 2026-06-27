@@ -1,0 +1,11 @@
+# Runs the roster pull once a day. Copy to /etc/systemd/system/, then:
+#   systemctl daemon-reload && systemctl enable --now swgoh-fetch.timer
+[Unit]
+Description=Daily SWGOH roster pull
+
+[Timer]
+OnCalendar=*-*-* 08:17:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

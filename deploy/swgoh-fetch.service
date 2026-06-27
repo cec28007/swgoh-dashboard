@@ -1,0 +1,12 @@
+# One-shot roster pull, triggered by swgoh-fetch.timer. Commits swgoh_data.js
+# back to the repo when it changes. Copy to /etc/systemd/system/.
+[Unit]
+Description=Pull SWGOH roster and commit if changed
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/swgoh-dashboard
+ExecStart=/home/ubuntu/swgoh-dashboard/deploy/run_fetch.sh
