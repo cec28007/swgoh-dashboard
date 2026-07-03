@@ -48,7 +48,9 @@ SYSTEM = (
     "the question about that situation, recommending ONLY from characters/units "
     "the user actually owns in the roster. Give concrete, prioritized, specific "
     "advice (who to field, leads, gear/upgrade priorities). Be concise. If the "
-    "roster or image lacks data needed to answer, say so."
+    "roster or image lacks data needed to answer, say so. Roster unit names may "
+    "be internal SWGOH base IDs (e.g. GLLEIA = Grand Master Leia, EXECUTORCOMMANDPRIME "
+    "= Executor); interpret them as the characters/ships they represent."
 )
 
 

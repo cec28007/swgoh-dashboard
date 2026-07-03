@@ -7,7 +7,9 @@ dashboard (swgoh.html) can render. Run it by hand, or on a daily timer from the
 Oracle Always-Free VM (see docs/swgoh.md).
 
 Sources:
-  swgoh   real pull from the free swgoh.gg public API (default)
+  comlink real pull from the local swgoh-comlink service (official game API;
+          use this on the Oracle box — swgoh.gg's public API is now blocked)
+  swgoh   real pull from the free swgoh.gg public API (now 403s; kept for ref)
   mock    canned roster for testing the pipeline with no network/credentials
 
 Usage:
@@ -29,6 +31,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "swgoh_data.js")
 DEFAULT_ALLY = "611121817"
 SWGOH_GG = "https://swgoh.gg/api/player/{ally}/"
+# Local swgoh-comlink service (same Docker network on the Oracle box). Talks to
+# the official game API, so it works where swgoh.gg's public API is now blocked.
+COMLINK_URL = os.environ.get("COMLINK_URL", "http://swgoh-comlink:3000")
 
 # swgoh.gg encodes combat type and offsets relic tier; normalize both here.
 COMBAT_CHARACTER, COMBAT_SHIP = 1, 2
@@ -116,6 +121,73 @@ def normalize_swgoh_gg(payload):
     }
 
 
+def _comlink_is_ship(u):
+    """1 = character, 2 = ship. Fallback: no relic + no equipment => ship."""
+    ct = u.get("combatType")
+    if ct in (1, 2, "1", "2", "COMBAT_TYPE_CHAR", "COMBAT_TYPE_SHIP"):
+        return ct in (2, "2", "COMBAT_TYPE_SHIP")
+    return not u.get("relic") and not u.get("equipment")
+
+
+def _comlink_relic(u):
+    """comlink relic.currentTier: 1/2 = no relic, 3 = relic 1 ... so -2."""
+    ct = (u.get("relic") or {}).get("currentTier")
+    return max(0, (ct or 0) - 2)
+
+
+def _est_power(stars, gear_level, relic, level, is_ship):
+    """Rough GP-ish estimate. comlink /player has no per-unit GP, so we derive a
+    monotonic value for sorting/ranking. Ballpark, not exact."""
+    if is_ship:
+        return stars * 4000 + level * 80
+    return stars * 3000 + gear_level * 1500 + relic * 2000 + level * 50
+
+
+def normalize_comlink(payload):
+    units = []
+    for u in payload.get("rosterUnit", []):
+        base_id = (u.get("definitionId") or "").split(":")[0]
+        is_ship = _comlink_is_ship(u)
+        stars = int(u.get("currentRarity") or 0)
+        tier = int(u.get("currentTier") or 0)
+        level = int(u.get("currentLevel") or 0)
+        relic = 0 if is_ship else _comlink_relic(u)
+        gear_level = 0 if is_ship else tier
+        units.append({
+            "base_id": base_id,
+            "name": base_id,  # comlink has no display names; Gemini reads base IDs
+            "type": "ship" if is_ship else "character",
+            "stars": stars, "level": level, "gear_level": gear_level,
+            "relic": relic,
+            "power": _est_power(stars, gear_level, relic, level, is_ship),
+            "zetas": 0, "omicrons": 0, "url": None,
+        })
+    units.sort(key=lambda x: x["power"], reverse=True)
+    char_gp = sum(u["power"] for u in units if u["type"] == "character")
+    ship_gp = sum(u["power"] for u in units if u["type"] == "ship")
+    return {
+        "name": payload.get("name"),
+        "ally_code": clean_ally(payload.get("allyCode")),
+        "level": payload.get("level"),
+        "guild_name": payload.get("guildName"),
+        "galactic_power": char_gp + ship_gp,
+        "character_gp": char_gp,
+        "ship_gp": ship_gp,
+        "last_updated": date.today().isoformat(),
+        "source": "comlink (power estimated)",
+        "units": units,
+    }
+
+
+def fetch_comlink(ally, url=None):
+    base = (url or COMLINK_URL).rstrip("/")
+    body = json.dumps({"payload": {"allyCode": clean_ally(ally)}, "enums": False}).encode()
+    req = urllib.request.Request(
+        base + "/player", data=body, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 def mock_roster(ally):
     units = [
         # name, type, stars, gear, relic, power, zetas, omicrons
@@ -162,7 +234,7 @@ def main(argv):
     dry = False
     it = iter(argv)
     for a in it:
-        if a in ("swgoh", "mock"):
+        if a in ("swgoh", "mock", "comlink"):
             source = a
         elif a == "--dry-run":
             dry = True
@@ -174,6 +246,13 @@ def main(argv):
     ally = resolve_ally(ally_arg)
     if source == "mock":
         roster = mock_roster(ally)
+    elif source == "comlink":
+        try:
+            payload = fetch_comlink(ally)
+        except Exception as e:  # noqa: BLE001 - surface a clear message and exit
+            print(f"ERROR fetching comlink for ally {ally}: {e}", file=sys.stderr)
+            return 1
+        roster = normalize_comlink(payload)
     else:
         try:
             payload = http_json(SWGOH_GG.format(ally=ally))
