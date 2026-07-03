@@ -14,9 +14,12 @@ Then point Caddy at it (see docs/swgoh.md). Zero dependencies — stdlib only.
 """
 import base64
 import binascii
+import hashlib
+import hmac
 import json
 import os
 import urllib.request
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -26,6 +29,10 @@ MAX_TOKENS = int(os.environ.get("ASK_MAX_TOKENS", "2048"))
 MAX_IMAGE_BYTES = 4 * 1024 * 1024
 ALLOWED_MEDIA_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
 API_URL = "https://api.anthropic.com/v1/messages"
+
+# Optional PIN lock. When APP_PIN is empty the lock is disabled (local dev).
+APP_PIN = os.environ.get("APP_PIN", "")
+AUTH_SECRET = os.environ.get("AUTH_SECRET", "")
 
 SYSTEM = (
     "You are a Star Wars: Galaxy of Heroes (SWGOH) strategy advisor. You are "
@@ -54,6 +61,72 @@ def slim_roster(roster):
         for u in roster.get("units", [])
     ]
     return slim
+
+
+def expected_token(secret):
+    """Deterministic signed token for the auth cookie (one user, one PIN)."""
+    return hmac.new(secret.encode(), b"authed", hashlib.sha256).hexdigest()
+
+
+def pin_ok(pin):
+    """Constant-time check of a submitted PIN against APP_PIN."""
+    if not APP_PIN:
+        return False
+    return hmac.compare_digest(str(pin), APP_PIN)
+
+
+def cookie_token(headers):
+    """Pull the `auth` cookie value from the request headers, or None."""
+    raw = headers.get("Cookie")
+    if not raw:
+        return None
+    jar = SimpleCookie()
+    try:
+        jar.load(raw)
+    except Exception:  # noqa: BLE001 - malformed cookie header
+        return None
+    morsel = jar.get("auth")
+    return morsel.value if morsel else None
+
+
+def authed(headers):
+    """True if the request carries a valid auth cookie, or the lock is disabled."""
+    if not APP_PIN:
+        return True
+    tok = cookie_token(headers)
+    if not tok:
+        return False
+    return hmac.compare_digest(tok, expected_token(AUTH_SECRET))
+
+
+PIN_PROMPT_HTML = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>SWGOH — Unlock</title><style>
+  body{margin:0;background:#0b0e14;color:#e6edf3;font:16px/1.5 -apple-system,
+       BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:grid;
+       place-items:center;min-height:100vh}
+  form{background:#151a23;border:1px solid #222b39;border-radius:12px;
+       padding:24px;width:min(320px,88vw);text-align:center}
+  h1{font-size:18px;margin:0 0 14px}
+  input{width:100%;padding:12px;font-size:16px;background:#0b0e14;color:#e6edf3;
+        border:1px solid #222b39;border-radius:8px;box-sizing:border-box}
+  button{margin-top:12px;width:100%;padding:12px;font-size:16px;cursor:pointer;
+         background:#ffd54a;color:#111;border:0;border-radius:8px;font-weight:600}
+  .err{color:#f87171;font-size:13px;min-height:18px;margin-top:8px}
+</style></head><body>
+<form id="f"><h1>&#9917; SWGOH Roster</h1>
+<input id="pin" type="password" inputmode="numeric" placeholder="Enter PIN" autofocus/>
+<button type="submit">Unlock</button><div class="err" id="e"></div></form>
+<script>
+document.getElementById("f").addEventListener("submit", async (ev)=>{
+  ev.preventDefault();
+  const pin=document.getElementById("pin").value;
+  const r=await fetch("/api/login",{method:"POST",
+    headers:{"Content-Type":"application/json"},body:JSON.stringify({pin})});
+  if(r.ok){location.reload();}
+  else{document.getElementById("e").textContent="Wrong PIN.";}
+});
+</script></body></html>"""
 
 
 def validate_image(image):

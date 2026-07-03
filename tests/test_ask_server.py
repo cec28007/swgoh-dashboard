@@ -105,5 +105,25 @@ class TestAskClaude(unittest.TestCase):
         self.assertEqual(called["n"], 0)
 
 
+class TestAuth(unittest.TestCase):
+    def test_pin_ok(self):
+        with mock.patch.object(ask_server, "APP_PIN", "1234"):
+            self.assertTrue(ask_server.pin_ok("1234"))
+            self.assertFalse(ask_server.pin_ok("9999"))
+            self.assertFalse(ask_server.pin_ok(""))
+
+    def test_token_roundtrip_and_authed(self):
+        with mock.patch.object(ask_server, "AUTH_SECRET", "s3cret"), \
+                mock.patch.object(ask_server, "APP_PIN", "1234"):
+            tok = ask_server.expected_token("s3cret")
+            self.assertTrue(ask_server.authed({"Cookie": f"auth={tok}"}))
+            self.assertFalse(ask_server.authed({"Cookie": "auth=nope"}))
+            self.assertFalse(ask_server.authed({}))
+
+    def test_lock_disabled_when_no_pin(self):
+        with mock.patch.object(ask_server, "APP_PIN", ""):
+            self.assertTrue(ask_server.authed({}))
+
+
 if __name__ == "__main__":
     unittest.main()
