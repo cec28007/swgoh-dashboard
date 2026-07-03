@@ -56,6 +56,28 @@ class TestHTTP(unittest.TestCase):
         code, _, _ = self._post("/api/login", {"pin": "0000"})
         self.assertEqual(code, 401)
 
+    def test_summarize_gated_then_works(self):
+        code, _, _ = self._post("/api/summarize", {"url": "https://youtu.be/x"})
+        self.assertEqual(code, 401)  # locked without cookie
+        _, _, hdrs = self._post("/api/login", {"pin": "1234"})
+        cookie = hdrs["Set-Cookie"].split(";")[0]
+        with mock.patch.object(ask_server, "post_to_gemini",
+                               lambda p, k: {"candidates": [{"content": {"parts": [
+                                   {"text": "• summary"}]}}]}), \
+                mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "x"}):
+            code, body, _ = self._post(
+                "/api/summarize", {"url": "https://www.youtube.com/watch?v=abc"}, cookie=cookie)
+        self.assertEqual(code, 200)
+        self.assertEqual(body["summary"], "• summary")
+
+    def test_summarize_rejects_non_youtube(self):
+        _, _, hdrs = self._post("/api/login", {"pin": "1234"})
+        cookie = hdrs["Set-Cookie"].split(";")[0]
+        with mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "x"}):
+            code, _, _ = self._post(
+                "/api/summarize", {"url": "https://example.com/x"}, cookie=cookie)
+        self.assertEqual(code, 400)
+
     def test_bad_image_returns_400(self):
         code, _, hdrs = self._post("/api/login", {"pin": "1234"})
         cookie = hdrs["Set-Cookie"].split(";")[0]

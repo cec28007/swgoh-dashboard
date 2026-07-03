@@ -20,6 +20,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import urllib.request
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -174,6 +175,44 @@ def build_payload(question, roster, image):
     }
 
 
+SUMMARY_PROMPT = (
+    "You are a Star Wars: Galaxy of Heroes coach. In 3-4 short bullet points, "
+    "summarize the key tips, strategy, or takeaways from this video so the viewer "
+    "doesn't need to watch it. Be specific and concise. If you can't access the "
+    "video, say so briefly."
+)
+
+_YT_RE = re.compile(r"^https?://(www\.)?(youtube\.com/watch\?v=|youtu\.be/)[\w-]+")
+
+
+def is_youtube_url(url):
+    return bool(_YT_RE.match(url or ""))
+
+
+def build_summary_payload(url):
+    return {
+        "contents": [{"parts": [
+            {"file_data": {"file_uri": url}},
+            {"text": SUMMARY_PROMPT},
+        ]}],
+        "generationConfig": {"maxOutputTokens": 1024},
+    }
+
+
+def summarize_video(url):
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY is not set in the server environment")
+    if not is_youtube_url(url):
+        raise ValueError("Only YouTube video links can be summarized.")
+    out = post_to_gemini(build_summary_payload(url), key)
+    candidates = out.get("candidates", [])
+    if not candidates:
+        raise RuntimeError(out.get("error", {}).get("message", "No summary returned."))
+    parts = candidates[0].get("content", {}).get("parts", [])
+    return "".join(p.get("text", "") for p in parts)
+
+
 def post_to_gemini(payload, key):
     """Send the request to the Gemini API and return the parsed JSON."""
     url = f"{API_BASE}/{MODEL}:generateContent"
@@ -239,6 +278,17 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:  # image guard / bad input
                 return self._send(400, {"error": str(e)})
             except Exception as e:  # noqa: BLE001 - return the message to the UI
+                return self._send(500, {"error": str(e)})
+
+        if route == "/api/summarize":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            try:
+                req = self._read_json()
+                return self._send(200, {"summary": summarize_video(req.get("url", ""))})
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            except Exception as e:  # noqa: BLE001
                 return self._send(500, {"error": str(e)})
 
         return self._send(404, {"error": "not found"})

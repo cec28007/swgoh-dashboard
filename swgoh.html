@@ -64,6 +64,10 @@
   .digest .item a { font-weight:600; }
   .digest .why { color:var(--muted); font-size:13px; margin-top:2px; }
   .digest .src { font-size:11px; margin-left:6px; }
+  .sumBtn { font-size:11px; margin-left:8px; padding:2px 8px; background:var(--bg);
+        border:1px solid var(--line); border-radius:99px; color:var(--accent); cursor:pointer; }
+  .summary { white-space:pre-wrap; margin-top:6px; padding:8px 10px; background:var(--bg);
+        border:1px solid var(--line); border-radius:8px; font-size:13px; }
 </style>
 </head>
 <body>
@@ -158,16 +162,47 @@
     const DG = window.SWGOH_DIGEST;
     if (!DG || !Array.isArray(DG.items) || !DG.items.length) return;
     const el = $("#digest");
+    const isYt = u => /youtube\.com\/watch|youtu\.be\//.test(u || "");
     el.innerHTML =
       `<h2>🗞 Today for You</h2>
        <div class="dsub">${esc(DG.headline)}${DG.generated ? " · " + esc(DG.generated) : ""}</div>` +
-      DG.items.map(i => `
+      DG.items.map((i, idx) => `
         <div class="item">
           <a href="${safeUrl(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a>
           <span class="pill src">${esc(i.source)}</span>
+          ${isYt(i.url) ? `<button class="sumBtn" data-idx="${idx}" data-url="${esc(i.url)}">Summarize</button>` : ""}
           <div class="why">${esc(i.why)}</div>
+          <div class="summary" id="sum-${idx}" style="display:none"></div>
         </div>`).join("");
     el.style.display = "block";
+
+    // Summarize on tap — asks the server to have Gemini watch the video.
+    el.addEventListener("click", async (ev) => {
+      const btn = ev.target.closest(".sumBtn");
+      if (!btn) return;
+      const box = $("#sum-" + btn.dataset.idx);
+      if (box.dataset.loaded) {                    // toggle once fetched
+        box.style.display = box.style.display === "none" ? "block" : "none";
+        btn.textContent = box.style.display === "none" ? "Summarize" : "Hide summary";
+        return;
+      }
+      btn.disabled = true; btn.textContent = "Summarizing…";
+      box.style.display = "block"; box.textContent = "Watching the video…";
+      try {
+        const r = await fetch("/api/summarize", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: btn.dataset.url }),
+        });
+        if (r.status === 401) { box.style.display = "none"; btn.disabled = false; btn.textContent = "Summarize"; showPin(); return; }
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+        box.textContent = j.summary; box.dataset.loaded = "1";
+        btn.disabled = false; btn.textContent = "Hide summary";
+      } catch (e) {
+        box.textContent = "Couldn't summarize — try opening the video. (" + e.message + ")";
+        btn.disabled = false; btn.textContent = "Summarize";
+      }
+    });
   })();
 
   $("#pname").textContent = D.name || "Unknown";

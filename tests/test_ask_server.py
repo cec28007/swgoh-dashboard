@@ -109,6 +109,39 @@ class TestAskAi(unittest.TestCase):
         self.assertEqual(called["n"], 0)
 
 
+class TestSummarizeVideo(unittest.TestCase):
+    def test_is_youtube_url(self):
+        self.assertTrue(ask_server.is_youtube_url("https://www.youtube.com/watch?v=abc123"))
+        self.assertTrue(ask_server.is_youtube_url("https://youtu.be/abc123"))
+        self.assertFalse(ask_server.is_youtube_url("https://example.com/evil"))
+        self.assertFalse(ask_server.is_youtube_url(""))
+
+    def test_build_summary_payload_has_video_and_prompt(self):
+        p = ask_server.build_summary_payload("https://www.youtube.com/watch?v=abc123")
+        parts = p["contents"][0]["parts"]
+        self.assertEqual(parts[0]["file_data"]["file_uri"],
+                         "https://www.youtube.com/watch?v=abc123")
+        self.assertTrue(parts[-1]["text"])
+
+    def test_rejects_non_youtube(self):
+        with mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "k"}):
+            with self.assertRaises(ValueError):
+                ask_server.summarize_video("https://example.com/x")
+
+    def test_requires_key(self):
+        with mock.patch.dict(ask_server.os.environ, {}, clear=True):
+            with self.assertRaises(RuntimeError):
+                ask_server.summarize_video("https://youtu.be/abc")
+
+    def test_returns_summary_text(self):
+        def fake_post(payload, key):
+            return {"candidates": [{"content": {"parts": [{"text": "• tip one"}]}}]}
+        with mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "k"}), \
+                mock.patch.object(ask_server, "post_to_gemini", fake_post):
+            out = ask_server.summarize_video("https://www.youtube.com/watch?v=abc")
+        self.assertEqual(out, "• tip one")
+
+
 class TestAuth(unittest.TestCase):
     def test_pin_ok(self):
         with mock.patch.object(ask_server, "APP_PIN", "1234"):
