@@ -199,29 +199,56 @@ def ask_claude(question, roster, image=None):
 
 
 class Handler(BaseHTTPRequestHandler):
-    def _send(self, code, payload, ctype="application/json"):
+    def _send(self, code, payload, ctype="application/json", extra_headers=None):
         data = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
+        for k, v in (extra_headers or {}).items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
+    def _read_json(self):
+        length = int(self.headers.get("Content-Length", 0))
+        return json.loads(self.rfile.read(length) or b"{}")
+
     def do_POST(self):
-        if self.path.rstrip("/") != "/api/ask":
-            return self._send(404, {"error": "not found"})
-        try:
-            length = int(self.headers.get("Content-Length", 0))
-            req = json.loads(self.rfile.read(length) or b"{}")
-            answer = ask_claude(req.get("question", ""), req.get("roster", {}))
-            self._send(200, {"answer": answer})
-        except Exception as e:  # noqa: BLE001 - return the message to the UI
-            self._send(500, {"error": str(e)})
+        route = self.path.rstrip("/")
+        if route == "/api/login":
+            try:
+                req = self._read_json()
+            except Exception:  # noqa: BLE001 - bad JSON body
+                return self._send(400, {"error": "bad request"})
+            if pin_ok(req.get("pin", "")):
+                cookie = (f"auth={expected_token(AUTH_SECRET)}; HttpOnly; Secure; "
+                          "SameSite=Lax; Path=/")
+                return self._send(200, {"ok": True}, extra_headers={"Set-Cookie": cookie})
+            return self._send(401, {"error": "wrong pin"})
+
+        if route == "/api/ask":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            try:
+                req = self._read_json()
+                answer = ask_claude(
+                    req.get("question", ""), req.get("roster", {}), req.get("image"))
+                return self._send(200, {"answer": answer})
+            except ValueError as e:  # image guard / bad input
+                return self._send(400, {"error": str(e)})
+            except Exception as e:  # noqa: BLE001 - return the message to the UI
+                return self._send(500, {"error": str(e)})
+
+        return self._send(404, {"error": "not found"})
 
     def do_GET(self):
-        # Serve the dashboard + its data file; everything else 404s.
-        name = "swgoh.html" if self.path in ("/", "/swgoh.html") else self.path.lstrip("/")
-        path = os.path.join(HERE, os.path.basename(name))
+        # The dashboard page is gated behind the PIN; static data is not.
+        if self.path in ("/", "/swgoh.html"):
+            if not authed(self.headers):
+                return self._send(200, PIN_PROMPT_HTML.encode(), "text/html")
+            path = os.path.join(HERE, "swgoh.html")
+        else:
+            path = os.path.join(HERE, os.path.basename(self.path.lstrip("/")))
         if not os.path.isfile(path):
             return self._send(404, {"error": "not found"})
         ctype = "text/html" if path.endswith(".html") else "application/javascript"
