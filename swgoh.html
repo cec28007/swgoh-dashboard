@@ -56,6 +56,14 @@
   .modalCard button { background:var(--accent); color:#111; border:0; border-radius:8px;
         padding:11px; font-size:16px; font-weight:600; cursor:pointer; }
   .err { color:#f87171; font-size:13px; min-height:16px; }
+  .digest { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin:16px 0; }
+  .digest h2 { margin:0; font-size:16px; }
+  .digest .dsub { color:var(--muted); font-size:12px; margin:4px 0 8px; }
+  .digest .item { padding:8px 0; border-bottom:1px solid var(--line); }
+  .digest .item:last-child { border-bottom:none; }
+  .digest .item a { font-weight:600; }
+  .digest .why { color:var(--muted); font-size:13px; margin-top:2px; }
+  .digest .src { font-size:11px; margin-left:6px; }
 </style>
 </head>
 <body>
@@ -67,6 +75,7 @@
 </header>
 
 <div class="wrap">
+  <div class="digest" id="digest" style="display:none"></div>
   <div class="kpis" id="kpis"></div>
 
   <div class="ask">
@@ -135,10 +144,31 @@
 </div>
 
 <script src="swgoh_data.js"></script>
+<script src="digest.js" onerror="void 0"></script>
 <script>
   const D = window.SWGOH_DATA || { units: [] };
   const fmt = n => (n == null ? "—" : n.toLocaleString());
   const $ = s => document.querySelector(s);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const safeUrl = u => (/^https?:\/\//i.test(u || "") ? u : "#");
+
+  // --- Today for You digest panel (renders digest.js if present) ---
+  (function renderDigest() {
+    const DG = window.SWGOH_DIGEST;
+    if (!DG || !Array.isArray(DG.items) || !DG.items.length) return;
+    const el = $("#digest");
+    el.innerHTML =
+      `<h2>🗞 Today for You</h2>
+       <div class="dsub">${esc(DG.headline)}${DG.generated ? " · " + esc(DG.generated) : ""}</div>` +
+      DG.items.map(i => `
+        <div class="item">
+          <a href="${safeUrl(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a>
+          <span class="pill src">${esc(i.source)}</span>
+          <div class="why">${esc(i.why)}</div>
+        </div>`).join("");
+    el.style.display = "block";
+  })();
 
   $("#pname").textContent = D.name || "Unknown";
   $("#psub").textContent =
