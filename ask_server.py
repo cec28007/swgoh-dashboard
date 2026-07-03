@@ -64,7 +64,9 @@ def slim_roster(roster):
         {
             "name": u.get("name"), "type": u.get("type"), "stars": u.get("stars"),
             "gear_level": u.get("gear_level"), "relic": u.get("relic"),
-            "zetas": u.get("zetas"), "omicrons": u.get("omicrons"), "power": u.get("power"),
+            "zetas": u.get("zetas"), "omicrons": u.get("omicrons"),
+            "power": u.get("power"), "speed": u.get("speed"),
+            "stats": u.get("stats"),
         }
         for u in roster.get("units", [])
     ]
