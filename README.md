@@ -1,9 +1,13 @@
 # SWGOH Roster Dashboard
 
 Access your **Star Wars: Galaxy of Heroes** roster — and ask Claude strategy
-questions about it — from any device (iPhone, MacBook, any browser), without
-Claude Code running on your laptop. Hosted free on an Oracle Always-Free VM and
-refreshed by a daily timer.
+questions about it, **with a game screenshot for context** — from any device
+(iPhone, MacBook, any browser), without Claude Code running on your laptop.
+Hosted free on an Oracle Always-Free VM and refreshed by a daily timer.
+
+Ask a question, attach or paste a screenshot (an enemy defense, a mod, a
+character screen), and Claude answers using both the image and your actual
+roster. Protected by a PIN so it isn't open on the internet.
 
 Zero dependencies — Python standard library only.
 
@@ -26,17 +30,21 @@ python3 fetch_swgoh.py swgoh             # pull YOUR real roster -> swgoh_data.j
 ```
 
 Then turn on the Ask box (needs an Anthropic API key from
-<https://console.anthropic.com> — pay-as-you-go, a fraction of a cent per
-question; this is separate from a Claude subscription):
+<https://console.anthropic.com> — pay-as-you-go, a few cents per question on
+Opus; this is separate from a Claude subscription). Copy `.env.example` to
+`.env` for the full list of settings:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-your-key-here
-export ASK_MODEL=claude-sonnet-4-6       # optional
+export ASK_MODEL=claude-opus-4-8         # optional; best screenshot advice
+export APP_PIN=1234                       # optional locally; required in prod
+export AUTH_SECRET=some-long-random-string
 python3 ask_server.py                    # http://127.0.0.1:8787
 ```
 
-Open <http://127.0.0.1:8787> and ask, e.g. *"What should I farm next for a Sith
-team?"*
+Open <http://127.0.0.1:8787>, enter the PIN, and ask — attach a screenshot for
+questions like *"who on my roster beats this defense?"* When `APP_PIN` is unset
+the lock is disabled (local dev only).
 
 Ally code resolution: `--ally 611121817`, else the `SWGOH_ALLY_CODE` env var,
 else the `ally_code` already in `swgoh_data.js`, else the built-in default.
@@ -44,9 +52,14 @@ else the `ally_code` already in `swgoh_data.js`, else the built-in default.
 ## Free, always-on deploy (Oracle Always-Free VM)
 
 See [`docs/swgoh.md`](docs/swgoh.md) and the `deploy/` folder: run `ask_server.py`
-as a systemd service (API key in the unit's `Environment=`), have Caddy
+as a systemd service (secrets in the unit's `Environment=`), have Caddy
 reverse-proxy your subdomain to it, and add a daily timer that re-pulls the
 roster. Result: `https://swgoh.yourdomain.com` works from any device.
+
+> **Note:** if this VM already runs the `personal-cloud` Caddy front door, do
+> **not** start a second Caddy — add a hostname block to that Caddyfile pointing
+> at `ask_server.py` (port 8787) instead. HTTPS is required for the Secure login
+> cookie and clipboard image-paste to work. See `docs/swgoh.md`.
 
 ## Data source
 

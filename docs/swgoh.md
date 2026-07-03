@@ -2,9 +2,12 @@
 
 A zero-dependency dashboard for your Star Wars: Galaxy of Heroes roster, plus an
 "Ask" box that answers strategy questions using the **Claude API** with your
-roster as context. Hosted free on an **Oracle Always-Free VM** and refreshed by
-a daily timer — so you can open it from your iPhone, MacBook, or any browser
-without Claude Code running on your laptop.
+roster as context — and, when you attach a **game screenshot**, Claude's vision
+reads the image (an enemy defense, a mod, a character screen) and answers from
+what you actually own. A PIN protects the page and the paid endpoint. Hosted
+free on an **Oracle Always-Free VM** and refreshed by a daily timer — so you can
+open it from your iPhone, MacBook, or any browser without Claude Code running on
+your laptop.
 
 This is the same architecture as the Tesla dashboard in this repo
 (`fetch_tesla.py` -> `data.js` -> static page on the Oracle VM), with two
@@ -34,36 +37,61 @@ Ally code resolution: `--ally 611121817`, else `SWGOH_ALLY_CODE` env var, else t
 
 The Ask box posts to `POST /api/ask`, which `ask_server.py` answers by calling
 Claude. Your API key lives **only** in the server environment — never in the
-browser or git.
+browser or git. When a screenshot is attached it is sent as a base64 image
+block alongside your roster; the roster block is marked cacheable so repeated
+questions in a sitting cost far less.
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...      # get one at console.anthropic.com
-export ASK_MODEL=claude-sonnet-4-6       # optional; cheaper/faster default
+export ASK_MODEL=claude-opus-4-8         # optional; best screenshot advice
+export APP_PIN=1234                       # lock the page + Ask box
+export AUTH_SECRET=long-random-string     # signs the login cookie
 python3 ask_server.py                    # http://127.0.0.1:8787
 ```
 
-Open <http://127.0.0.1:8787> and ask, e.g. "What should I farm next for a Sith
-team?" Cost is pay-as-you-go per question (typically a fraction of a cent).
+Open <http://127.0.0.1:8787>, enter the PIN, then ask — attach or paste a
+screenshot for "who beats this?" questions. Cost is pay-as-you-go per question
+(a few cents on Opus). With `APP_PIN` unset the lock is off (local dev only).
+
+**Auth model:** `POST /api/login` checks the PIN and sets a signed
+(`AUTH_SECRET`-HMAC) `auth` cookie; both `GET /` and `POST /api/ask` require it.
+The app only ever holds your own roster (`swgoh_data.js`), so there is no way to
+look anyone else up. **Images** must be PNG/JPEG/GIF/WebP and ≤ 4 MB.
 
 ## Free, always-on deploy (Oracle Always-Free VM)
 
 Set up the VM, a DNS subdomain, and Caddy, then use the units in `deploy/`:
 
-1. **Serve it.** Install `deploy/swgoh-ask.service` (set `ANTHROPIC_API_KEY` in
-   its `Environment=` line), then `systemctl enable --now swgoh-ask`. Point Caddy
-   at it with `deploy/Caddyfile`:
-   ```
-   swgoh.yourdomain.com {
-       reverse_proxy 127.0.0.1:8787
-   }
-   ```
-2. **Refresh daily.** Install `deploy/swgoh-fetch.service` + `swgoh-fetch.timer`
+1. **Serve it.** Install `deploy/swgoh-ask.service` (set `ANTHROPIC_API_KEY`,
+   `APP_PIN`, and `AUTH_SECRET` in its `Environment=` lines), then
+   `systemctl enable --now swgoh-ask`. It listens on `127.0.0.1:8787`.
+2. **Front it with Caddy for HTTPS.** HTTPS is **required** — the login cookie is
+   `Secure` and clipboard image-paste needs a secure context.
+   - **If this VM already runs the `personal-cloud` Caddy** (the single container
+     front door shared with swgoh-mod-planner + SWU): do **not** start a second
+     Caddy — they would fight over ports 80/443. Add a hostname block to that
+     Caddyfile that proxies to this host service. Because Caddy runs in a
+     container, target the host gateway:
+     ```
+     swgoh.yourdomain.com {
+         reverse_proxy host.docker.internal:8787
+     }
+     ```
+     and give the caddy service `extra_hosts: ["host.docker.internal:host-gateway"]`.
+     (Alternatively, dockerize `ask_server.py` as a compose service and proxy by
+     service name.) **Confirm which Caddy is authoritative on the box before
+     wiring this.**
+   - **If there is no other Caddy**, use the standalone `deploy/Caddyfile`
+     (`swgoh.yourdomain.com { reverse_proxy 127.0.0.1:8787 }`) with a host Caddy.
+3. **Refresh daily.** Install `deploy/swgoh-fetch.service` + `swgoh-fetch.timer`
    (they run `deploy/run_fetch.sh`, which pulls the roster and commits
    `swgoh_data.js` only when it changed), then
    `systemctl enable --now swgoh-fetch.timer`.
 
-That's it — `https://swgoh.yourdomain.com` works from any device, no laptop
-needed.
+Also open ports 80/443 in the Oracle security list. Then
+`https://swgoh.yourdomain.com` works from any device — enter the PIN once and
+your phone remembers it. No domain yet? A free `duckdns.org` name works with
+Caddy's automatic HTTPS.
 
 ## Data source notes
 
