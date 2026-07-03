@@ -176,8 +176,10 @@ def fallback_rank(diff, candidates, cap=8):
 
 def gemini_generate(prompt, key):
     """One Gemini generateContent call; returns the reply text."""
+    # 2.5-flash spends "thinking" tokens against this budget; the ranked JSON
+    # needs room after that, so keep it generous to avoid a truncated reply.
     payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
-               "generationConfig": {"maxOutputTokens": 4096}}
+               "generationConfig": {"maxOutputTokens": 8192}}
     url = f"{GEMINI_URL}/{ASK_MODEL}:generateContent"
     req = urllib.request.Request(url, data=json.dumps(payload).encode(),
                                  headers={"x-goog-api-key": key,
