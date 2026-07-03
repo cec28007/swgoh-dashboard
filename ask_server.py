@@ -31,11 +31,8 @@ SYSTEM = (
 )
 
 
-def ask_claude(question, roster):
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    if not key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in the server environment")
-    # Trim the roster to the fields that matter so we send fewer tokens.
+def slim_roster(roster):
+    """Trim the roster to the fields that matter so we send fewer tokens."""
     slim = {
         k: roster.get(k)
         for k in ("name", "galactic_power", "character_gp", "ship_gp", "last_updated")
@@ -48,6 +45,14 @@ def ask_claude(question, roster):
         }
         for u in roster.get("units", [])
     ]
+    return slim
+
+
+def ask_claude(question, roster):
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
+        raise RuntimeError("ANTHROPIC_API_KEY is not set in the server environment")
+    slim = slim_roster(roster)
     body = json.dumps({
         "model": MODEL,
         "max_tokens": 1024,
