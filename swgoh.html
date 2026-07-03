@@ -114,6 +114,7 @@
         <th class="num" data-k="stars">★</th>
         <th class="num" data-k="gear_level">Gear</th>
         <th class="num" data-k="relic">Relic</th>
+        <th class="num" data-k="speed">Speed</th>
         <th class="num" data-k="zetas">Zeta</th>
         <th class="num" data-k="omicrons">Omi</th>
         <th class="num" data-k="power">Power</th>
@@ -182,6 +183,7 @@
         <td class="num">${u.stars || 0}</td>
         <td class="num">${u.type === "ship" ? "—" : (u.gear_level || 0)}</td>
         <td class="num">${u.relic ? "R" + u.relic : "—"}</td>
+        <td class="num">${u.speed != null ? u.speed : "—"}</td>
         <td class="num">${u.zetas || 0}</td>
         <td class="num">${u.omicrons || 0}</td>
         <td class="num">${fmt(u.power)}</td>

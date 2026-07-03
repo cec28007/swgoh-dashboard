@@ -66,8 +66,9 @@ ENRICHED = {
         {"nameKey": "STAT_SHIP_GALACTIC_POWER_ACQUIRED_NAME", "value": "2739419"},
     ],
     "rosterUnit": [
-        {"definitionId": "GLLEIA:SEVEN_STAR", "currentRarity": 7, "currentLevel": 85,
-         "currentTier": 13, "relic": {"currentTier": 11}, "combatType": 1,
+        {"id": "U_LEIA", "definitionId": "GLLEIA:SEVEN_STAR", "currentRarity": 7,
+         "currentLevel": 85, "currentTier": 13, "relic": {"currentTier": 11},
+         "combatType": 1,
          "skill": [{"id": "leader_GLLEIA", "tier": 3}, {"id": "basic_GLLEIA", "tier": 1}]},
     ],
 }
@@ -95,6 +96,21 @@ class TestNormalizeComlinkEnriched(unittest.TestCase):
         self.assertEqual(self.r["galactic_power"], 7285105)
         self.assertEqual(self.r["character_gp"], 4545686)
         self.assertEqual(self.r["ship_gp"], 2739419)
+
+
+class TestNormalizeComlinkStats(unittest.TestCase):
+    def setUp(self):
+        stats_map = {"U_LEIA": {"gp": 57429, "stats": {"Speed": 528, "Health": 161559}}}
+        self.leia = fetch_swgoh.normalize_comlink(ENRICHED, MAPS, stats_map)["units"][0]
+
+    def test_real_per_unit_gp_becomes_power(self):
+        self.assertEqual(self.leia["power"], 57429)
+
+    def test_speed_surfaced(self):
+        self.assertEqual(self.leia["speed"], 528)
+
+    def test_full_stats_attached(self):
+        self.assertEqual(self.leia["stats"]["Health"], 161559)
 
 
 if __name__ == "__main__":

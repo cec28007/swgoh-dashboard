@@ -28,6 +28,7 @@ import urllib.request
 from datetime import date
 
 import gamedata
+import stats as stats_svc
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "swgoh_data.js")
@@ -146,16 +147,17 @@ def _est_power(stars, gear_level, relic, level, is_ship):
     return stars * 3000 + gear_level * 1500 + relic * 2000 + level * 50
 
 
-def normalize_comlink(payload, maps=None):
+def normalize_comlink(payload, maps=None, stats_map=None):
     """Convert a comlink /player payload into the dashboard roster shape.
 
-    When `maps` (from gamedata.load_or_refresh) is provided, unit names, zeta and
-    omicron counts are real; otherwise names fall back to base IDs and zeta/omi
-    are 0. Galactic-power totals come from profileStat when present (real), else
-    from the per-unit estimate.
+    `maps` (gamedata.load_or_refresh) adds real names + zeta/omicron counts.
+    `stats_map` (stats.build_stats_map) adds real per-unit GP, Speed, and the
+    full final-stat block. Without them, names fall back to base IDs, zeta/omi
+    are 0, and power is an estimate.
     """
     names = (maps or {}).get("names", {})
     skill_map = (maps or {}).get("skills", {})
+    stats_map = stats_map or {}
     units = []
     for u in payload.get("rosterUnit", []):
         base_id = (u.get("definitionId") or "").split(":")[0]
@@ -167,14 +169,22 @@ def normalize_comlink(payload, maps=None):
         gear_level = 0 if is_ship else tier
         zetas, omis = (gamedata.count_zeta_omi(u.get("skill", []), skill_map)
                        if skill_map else (0, 0))
+        st = stats_map.get(u.get("id"))
+        if st:
+            power = int(st.get("gp") or 0)
+            unit_stats = st.get("stats") or {}
+            speed = unit_stats.get("Speed")
+        else:
+            power = _est_power(stars, gear_level, relic, level, is_ship)
+            unit_stats = {}
+            speed = None
         units.append({
             "base_id": base_id,
             "name": names.get(base_id, base_id),
             "type": "ship" if is_ship else "character",
             "stars": stars, "level": level, "gear_level": gear_level,
-            "relic": relic,
-            "power": _est_power(stars, gear_level, relic, level, is_ship),
-            "zetas": zetas, "omicrons": omis, "url": None,
+            "relic": relic, "power": power, "speed": speed,
+            "zetas": zetas, "omicrons": omis, "stats": unit_stats, "url": None,
         })
     units.sort(key=lambda x: x["power"], reverse=True)
 
@@ -185,13 +195,14 @@ def normalize_comlink(payload, maps=None):
     char_gp = gp["character_gp"] if gp["character_gp"] is not None else est_char
     ship_gp = gp["ship_gp"] if gp["ship_gp"] is not None else est_ship
 
-    # When real GP totals are known, scale the per-unit estimates so the Power
-    # column sums to the real totals (keeps the estimate-based sort order).
-    if gp["character_gp"] is not None and est_char:
+    # Only estimates need scaling. With real per-unit GP (stats_map) the Power
+    # column already sums to the real totals; scale only when we fell back to
+    # estimates but do know the real GP totals from profileStat.
+    if not stats_map and gp["character_gp"] is not None and est_char:
         for u in units:
             if u["type"] == "character":
                 u["power"] = round(u["power"] / est_char * gp["character_gp"])
-    if gp["ship_gp"] is not None and est_ship:
+    if not stats_map and gp["ship_gp"] is not None and est_ship:
         for u in units:
             if u["type"] == "ship":
                 u["power"] = round(u["power"] / est_ship * gp["ship_gp"])
@@ -288,7 +299,14 @@ def main(argv):
             print(f"WARN game-data enrichment unavailable ({e}); using base IDs",
                   file=sys.stderr)
             maps = None
-        roster = normalize_comlink(payload, maps)
+        try:
+            stats_map = stats_svc.build_stats_map(
+                stats_svc.fetch_stats(payload.get("rosterUnit", [])))
+        except Exception as e:  # noqa: BLE001 - stats are enrichment, not fatal
+            print(f"WARN stats service unavailable ({e}); GP/speed estimated",
+                  file=sys.stderr)
+            stats_map = None
+        roster = normalize_comlink(payload, maps, stats_map)
     else:
         try:
             payload = http_json(SWGOH_GG.format(ally=ally))
