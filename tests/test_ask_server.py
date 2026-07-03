@@ -25,5 +25,31 @@ class TestSlimRoster(unittest.TestCase):
         self.assertEqual(u["name"], "Rotta")
 
 
+class TestBuildPayload(unittest.TestCase):
+    def _base(self):
+        return {"name": "C", "units": [{"name": "Rotta", "type": "character", "stars": 7,
+                "gear_level": 13, "relic": 5, "zetas": 0, "omicrons": 0, "power": 1}]}
+
+    def test_text_only(self):
+        p = ask_server.build_payload("who wins?", self._base(), None)
+        self.assertEqual(p["model"], "claude-opus-4-8")
+        self.assertEqual(p["max_tokens"], 2048)
+        content = p["messages"][0]["content"]
+        self.assertTrue(all(b["type"] == "text" for b in content))
+        roster_block = content[0]
+        self.assertEqual(roster_block["cache_control"], {"type": "ephemeral"})
+        self.assertIn("Rotta", roster_block["text"])
+        self.assertIn("who wins?", content[-1]["text"])
+
+    def test_with_image_prepends_image_block(self):
+        img = {"media_type": "image/png", "data": "QUJD"}
+        p = ask_server.build_payload("counter this", self._base(), img)
+        content = p["messages"][0]["content"]
+        self.assertEqual(content[0]["type"], "image")
+        self.assertEqual(content[0]["source"]["media_type"], "image/png")
+        self.assertEqual(content[0]["source"]["data"], "QUJD")
+        self.assertEqual(content[-1]["text"], "Question: counter this")
+
+
 if __name__ == "__main__":
     unittest.main()

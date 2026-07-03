@@ -19,15 +19,19 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("ASK_PORT", "8787"))
-MODEL = os.environ.get("ASK_MODEL", "claude-sonnet-4-6")
+MODEL = os.environ.get("ASK_MODEL", "claude-opus-4-8")
+MAX_TOKENS = int(os.environ.get("ASK_MAX_TOKENS", "2048"))
 API_URL = "https://api.anthropic.com/v1/messages"
 
 SYSTEM = (
     "You are a Star Wars: Galaxy of Heroes (SWGOH) strategy advisor. You are "
-    "given the user's actual roster as JSON. Give concrete, prioritized advice "
-    "about what to farm, gear, or upgrade next, grounded ONLY in the roster "
-    "provided. Be specific and concise. If the roster lacks data needed to "
-    "answer, say so."
+    "given the user's actual roster as JSON. The user may ALSO attach a "
+    "screenshot from the game — an enemy team on a defense, a mod's stats, or a "
+    "character screen. When an image is present, read it carefully and answer "
+    "the question about that situation, recommending ONLY from characters/units "
+    "the user actually owns in the roster. Give concrete, prioritized, specific "
+    "advice (who to field, leads, gear/upgrade priorities). Be concise. If the "
+    "roster or image lacks data needed to answer, say so."
 )
 
 
@@ -46,6 +50,37 @@ def slim_roster(roster):
         for u in roster.get("units", [])
     ]
     return slim
+
+
+def build_payload(question, roster, image):
+    """Build the Anthropic Messages request dict.
+
+    image, when present, is {"media_type": str, "data": <base64 str>} and is
+    placed as the first content block. The roster block carries cache_control so
+    repeated questions in a sitting reuse it cheaply.
+    """
+    content = []
+    if image:
+        content.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": image["media_type"],
+                "data": image["data"],
+            },
+        })
+    content.append({
+        "type": "text",
+        "text": f"My roster:\n{json.dumps(slim_roster(roster))}",
+        "cache_control": {"type": "ephemeral"},
+    })
+    content.append({"type": "text", "text": f"Question: {question}"})
+    return {
+        "model": MODEL,
+        "max_tokens": MAX_TOKENS,
+        "system": SYSTEM,
+        "messages": [{"role": "user", "content": content}],
+    }
 
 
 def ask_claude(question, roster):
