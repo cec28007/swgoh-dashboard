@@ -103,27 +103,25 @@ def build_payload(question, roster, image):
     }
 
 
-def ask_claude(question, roster):
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    if not key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in the server environment")
-    slim = slim_roster(roster)
-    body = json.dumps({
-        "model": MODEL,
-        "max_tokens": 1024,
-        "system": SYSTEM,
-        "messages": [{
-            "role": "user",
-            "content": f"My roster:\n{json.dumps(slim)}\n\nQuestion: {question}",
-        }],
-    }).encode("utf-8")
+def post_to_anthropic(payload, key):
+    """Send the request to the Anthropic Messages API and return the parsed JSON."""
+    body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(API_URL, data=body, headers={
         "x-api-key": key,
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
     })
     with urllib.request.urlopen(req, timeout=60) as resp:
-        out = json.loads(resp.read().decode("utf-8"))
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def ask_claude(question, roster, image=None):
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
+        raise RuntimeError("ANTHROPIC_API_KEY is not set in the server environment")
+    validate_image(image)
+    payload = build_payload(question, roster, image)
+    out = post_to_anthropic(payload, key)
     return "".join(b.get("text", "") for b in out.get("content", []))
 
 

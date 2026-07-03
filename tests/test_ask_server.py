@@ -69,5 +69,41 @@ class TestValidateImage(unittest.TestCase):
         self.assertIsNone(ask_server.validate_image({"media_type": "image/png", "data": ok}))
 
 
+class TestAskClaude(unittest.TestCase):
+    def test_requires_key(self):
+        with mock.patch.dict(ask_server.os.environ, {}, clear=True):
+            with self.assertRaises(RuntimeError):
+                ask_server.ask_claude("q", {"units": []})
+
+    def test_returns_joined_text_and_passes_image(self):
+        captured = {}
+
+        def fake_post(payload, key):
+            captured["payload"] = payload
+            return {"content": [{"type": "text", "text": "Rey "},
+                                {"type": "text", "text": "wins"}]}
+
+        with mock.patch.dict(ask_server.os.environ, {"ANTHROPIC_API_KEY": "sk-x"}), \
+                mock.patch.object(ask_server, "post_to_anthropic", fake_post):
+            out = ask_server.ask_claude("beat this", {"units": []},
+                                        {"media_type": "image/png", "data": "QUJD"})
+        self.assertEqual(out, "Rey wins")
+        self.assertEqual(captured["payload"]["messages"][0]["content"][0]["type"], "image")
+
+    def test_rejects_bad_image_before_network(self):
+        called = {"n": 0}
+
+        def fake_post(payload, key):
+            called["n"] += 1
+            return {"content": []}
+
+        with mock.patch.dict(ask_server.os.environ, {"ANTHROPIC_API_KEY": "sk-x"}), \
+                mock.patch.object(ask_server, "post_to_anthropic", fake_post):
+            with self.assertRaises(ValueError):
+                ask_server.ask_claude("q", {"units": []},
+                                      {"media_type": "image/tiff", "data": "QQ=="})
+        self.assertEqual(called["n"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
