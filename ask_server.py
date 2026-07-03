@@ -26,6 +26,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("ASK_PORT", "8787"))
+# Bind host: 127.0.0.1 for local runs; set ASK_HOST=0.0.0.0 in a container so
+# the Caddy front door (a separate container) can reach it.
+HOST = os.environ.get("ASK_HOST", "127.0.0.1")
 MODEL = os.environ.get("ASK_MODEL", "gemini-2.5-flash")
 # Gemini 2.5 spends "thinking" tokens against this budget, so keep it generous.
 MAX_TOKENS = int(os.environ.get("ASK_MAX_TOKENS", "4096"))
@@ -255,5 +258,5 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"Serving dashboard + /api/ask on 127.0.0.1:{PORT} (model: {MODEL})")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    print(f"Serving dashboard + /api/ask on {HOST}:{PORT} (model: {MODEL})")
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
