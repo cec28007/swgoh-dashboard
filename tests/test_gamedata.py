@@ -49,28 +49,33 @@ class TestBuildSkillMap(unittest.TestCase):
             ]},
         ]
         m = gamedata.build_skill_map(skills)
-        self.assertEqual(m["leader_GLLEIA"]["zeta_tier"], 2)     # index 1 -> tier 2
-        self.assertEqual(m["leader_GLLEIA"]["omicron_tier"], 3)  # index 2 -> tier 3
+        self.assertEqual(m["leader_GLLEIA"]["zeta_tier"], 1)     # 0-based index
+        self.assertEqual(m["leader_GLLEIA"]["omicron_tier"], 2)
         self.assertIsNone(m["basic_GLLEIA"]["zeta_tier"])
         self.assertIsNone(m["basic_GLLEIA"]["omicron_tier"])
 
 
 class TestCountZetaOmi(unittest.TestCase):
     def _map(self):
-        return {"leader_GLLEIA": {"zeta_tier": 2, "omicron_tier": 3},
+        # 0-based tier indices, matching /player's 0-based skill.tier
+        return {"leader_GLLEIA": {"zeta_tier": 1, "omicron_tier": 2},
                 "basic_GLLEIA": {"zeta_tier": None, "omicron_tier": None}}
 
     def test_counts_applied_zetas_and_omicrons(self):
-        skills = [{"id": "leader_GLLEIA", "tier": 3}, {"id": "basic_GLLEIA", "tier": 1}]
+        skills = [{"id": "leader_GLLEIA", "tier": 2}, {"id": "basic_GLLEIA", "tier": 0}]
         self.assertEqual(gamedata.count_zeta_omi(skills, self._map()), (1, 1))
 
     def test_not_yet_reached(self):
-        skills = [{"id": "leader_GLLEIA", "tier": 1}]  # below zeta tier 2
+        skills = [{"id": "leader_GLLEIA", "tier": 0}]  # below zeta tier index 1
         self.assertEqual(gamedata.count_zeta_omi(skills, self._map()), (0, 0))
 
     def test_zeta_but_not_omicron(self):
-        skills = [{"id": "leader_GLLEIA", "tier": 2}]  # >=2 zeta, <3 omicron
+        skills = [{"id": "leader_GLLEIA", "tier": 1}]  # >=1 zeta, <2 omicron
         self.assertEqual(gamedata.count_zeta_omi(skills, self._map()), (1, 0))
+
+    def test_zeta_at_tier_zero_is_valid(self):
+        m = {"x": {"zeta_tier": 0, "omicron_tier": None}}
+        self.assertEqual(gamedata.count_zeta_omi([{"id": "x", "tier": 0}], m), (1, 0))
 
 
 class TestGpTotals(unittest.TestCase):

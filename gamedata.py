@@ -50,15 +50,19 @@ def build_name_map(units, loc):
 
 
 def build_skill_map(skills):
-    """skill_id -> {zeta_tier, omicron_tier} (1-based tier at which each applies)."""
+    """skill_id -> {zeta_tier, omicron_tier} as 0-based tier indices.
+
+    A /player skill's `tier` is 0-based (0 = un-upgraded, N-1 = a maxed N-tier
+    skill), so we store the matching 0-based index of the zeta/omicron tier.
+    """
     out = {}
     for s in skills:
         zeta = omi = None
         for i, tier in enumerate(s.get("tier", [])):
             if zeta is None and tier.get("isZetaTier"):
-                zeta = i + 1
+                zeta = i
             if omi is None and tier.get("isOmicronTier"):
-                omi = i + 1
+                omi = i
         out[s.get("id")] = {"zeta_tier": zeta, "omicron_tier": omi}
     return out
 
@@ -71,9 +75,9 @@ def count_zeta_omi(unit_skills, skill_map):
         if not info:
             continue
         tier = int(sk.get("tier") or 0)
-        if info["zeta_tier"] and tier >= info["zeta_tier"]:
+        if info["zeta_tier"] is not None and tier >= info["zeta_tier"]:
             zetas += 1
-        if info["omicron_tier"] and tier >= info["omicron_tier"]:
+        if info["omicron_tier"] is not None and tier >= info["omicron_tier"]:
             omis += 1
     return zetas, omis
 
