@@ -88,10 +88,16 @@ Set up the VM, a DNS subdomain, and Caddy, then use the units in `deploy/`:
    `swgoh_data.js` only when it changed), then
    `systemctl enable --now swgoh-fetch.timer`.
 
-Also open ports 80/443 in the Oracle security list. Then
-`https://swgoh.yourdomain.com` works from any device — enter the PIN once and
-your phone remembers it. No domain yet? A free `duckdns.org` name works with
-Caddy's automatic HTTPS.
+Also open ports 80/443 in the Oracle security list.
+
+**Hostname:** this stack uses **sslip.io** off the server's reserved IP
+(129.146.69.139) — no registrar needed. The mod-planner already uses
+`SWGOH_DOMAIN` (its value is in `personal-cloud/.env` on the box). The dashboard
+needs its OWN label on the same IP, e.g. set `DASH_DOMAIN=swgoh-dash.129-146-69-139.sslip.io`
+in the Caddy block. It resolves automatically and Caddy issues a matching cert.
+
+Then `https://<DASH_DOMAIN>` works from any device — enter the PIN once and your
+phone remembers it.
 
 ## Data source notes
 

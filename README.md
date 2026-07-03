@@ -58,8 +58,10 @@ roster. Result: `https://swgoh.yourdomain.com` works from any device.
 
 > **Note:** if this VM already runs the `personal-cloud` Caddy front door, do
 > **not** start a second Caddy — add a hostname block to that Caddyfile pointing
-> at `ask_server.py` (port 8787) instead. HTTPS is required for the Secure login
-> cookie and clipboard image-paste to work. See `docs/swgoh.md`.
+> at `ask_server.py` (port 8787) instead. Give it its own **sslip.io** label off
+> the server IP (e.g. `swgoh-dash.129-146-69-139.sslip.io`), like the rest of the
+> stack — no registrar needed. HTTPS is required for the Secure login cookie and
+> clipboard image-paste. See `docs/swgoh.md`.
 
 ## Data source
 
