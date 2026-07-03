@@ -58,5 +58,44 @@ class TestNormalizeComlink(unittest.TestCase):
         )
 
 
+ENRICHED = {
+    "name": "Jaxen Sol", "allyCode": "611121817",
+    "profileStat": [
+        {"nameKey": "STAT_GALACTIC_POWER_ACQUIRED_NAME", "value": "7285105"},
+        {"nameKey": "STAT_CHARACTER_GALACTIC_POWER_ACQUIRED_NAME", "value": "4545686"},
+        {"nameKey": "STAT_SHIP_GALACTIC_POWER_ACQUIRED_NAME", "value": "2739419"},
+    ],
+    "rosterUnit": [
+        {"definitionId": "GLLEIA:SEVEN_STAR", "currentRarity": 7, "currentLevel": 85,
+         "currentTier": 13, "relic": {"currentTier": 11}, "combatType": 1,
+         "skill": [{"id": "leader_GLLEIA", "tier": 3}, {"id": "basic_GLLEIA", "tier": 1}]},
+    ],
+}
+MAPS = {
+    "version": "x",
+    "names": {"GLLEIA": "Grand Master Leia Organa"},
+    "skills": {"leader_GLLEIA": {"zeta_tier": 2, "omicron_tier": 3},
+               "basic_GLLEIA": {"zeta_tier": None, "omicron_tier": None}},
+}
+
+
+class TestNormalizeComlinkEnriched(unittest.TestCase):
+    def setUp(self):
+        self.r = fetch_swgoh.normalize_comlink(ENRICHED, MAPS)
+        self.leia = self.r["units"][0]
+
+    def test_real_name(self):
+        self.assertEqual(self.leia["name"], "Grand Master Leia Organa")
+
+    def test_real_zeta_omicron_counts(self):
+        self.assertEqual(self.leia["zetas"], 1)
+        self.assertEqual(self.leia["omicrons"], 1)
+
+    def test_real_gp_totals_from_profile_stat(self):
+        self.assertEqual(self.r["galactic_power"], 7285105)
+        self.assertEqual(self.r["character_gp"], 4545686)
+        self.assertEqual(self.r["ship_gp"], 2739419)
+
+
 if __name__ == "__main__":
     unittest.main()

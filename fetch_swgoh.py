@@ -27,8 +27,11 @@ import sys
 import urllib.request
 from datetime import date
 
+import gamedata
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "swgoh_data.js")
+GAMEDATA_CACHE = os.path.join(HERE, "gamedata_cache.json")
 DEFAULT_ALLY = "611121817"
 SWGOH_GG = "https://swgoh.gg/api/player/{ally}/"
 # Local swgoh-comlink service (same Docker network on the Oracle box). Talks to
@@ -143,7 +146,16 @@ def _est_power(stars, gear_level, relic, level, is_ship):
     return stars * 3000 + gear_level * 1500 + relic * 2000 + level * 50
 
 
-def normalize_comlink(payload):
+def normalize_comlink(payload, maps=None):
+    """Convert a comlink /player payload into the dashboard roster shape.
+
+    When `maps` (from gamedata.load_or_refresh) is provided, unit names, zeta and
+    omicron counts are real; otherwise names fall back to base IDs and zeta/omi
+    are 0. Galactic-power totals come from profileStat when present (real), else
+    from the per-unit estimate.
+    """
+    names = (maps or {}).get("names", {})
+    skill_map = (maps or {}).get("skills", {})
     units = []
     for u in payload.get("rosterUnit", []):
         base_id = (u.get("definitionId") or "").split(":")[0]
@@ -153,28 +165,46 @@ def normalize_comlink(payload):
         level = int(u.get("currentLevel") or 0)
         relic = 0 if is_ship else _comlink_relic(u)
         gear_level = 0 if is_ship else tier
+        zetas, omis = (gamedata.count_zeta_omi(u.get("skill", []), skill_map)
+                       if skill_map else (0, 0))
         units.append({
             "base_id": base_id,
-            "name": base_id,  # comlink has no display names; Gemini reads base IDs
+            "name": names.get(base_id, base_id),
             "type": "ship" if is_ship else "character",
             "stars": stars, "level": level, "gear_level": gear_level,
             "relic": relic,
             "power": _est_power(stars, gear_level, relic, level, is_ship),
-            "zetas": 0, "omicrons": 0, "url": None,
+            "zetas": zetas, "omicrons": omis, "url": None,
         })
     units.sort(key=lambda x: x["power"], reverse=True)
-    char_gp = sum(u["power"] for u in units if u["type"] == "character")
-    ship_gp = sum(u["power"] for u in units if u["type"] == "ship")
+
+    gp = gamedata.gp_totals(payload.get("profileStat", []))
+    est_char = sum(u["power"] for u in units if u["type"] == "character")
+    est_ship = sum(u["power"] for u in units if u["type"] == "ship")
+    galactic = gp["galactic_power"] if gp["galactic_power"] is not None else est_char + est_ship
+    char_gp = gp["character_gp"] if gp["character_gp"] is not None else est_char
+    ship_gp = gp["ship_gp"] if gp["ship_gp"] is not None else est_ship
+
+    # When real GP totals are known, scale the per-unit estimates so the Power
+    # column sums to the real totals (keeps the estimate-based sort order).
+    if gp["character_gp"] is not None and est_char:
+        for u in units:
+            if u["type"] == "character":
+                u["power"] = round(u["power"] / est_char * gp["character_gp"])
+    if gp["ship_gp"] is not None and est_ship:
+        for u in units:
+            if u["type"] == "ship":
+                u["power"] = round(u["power"] / est_ship * gp["ship_gp"])
     return {
         "name": payload.get("name"),
         "ally_code": clean_ally(payload.get("allyCode")),
         "level": payload.get("level"),
         "guild_name": payload.get("guildName"),
-        "galactic_power": char_gp + ship_gp,
+        "galactic_power": galactic,
         "character_gp": char_gp,
         "ship_gp": ship_gp,
         "last_updated": date.today().isoformat(),
-        "source": "comlink (power estimated)",
+        "source": "comlink",
         "units": units,
     }
 
@@ -252,7 +282,13 @@ def main(argv):
         except Exception as e:  # noqa: BLE001 - surface a clear message and exit
             print(f"ERROR fetching comlink for ally {ally}: {e}", file=sys.stderr)
             return 1
-        roster = normalize_comlink(payload)
+        try:
+            maps = gamedata.load_or_refresh(GAMEDATA_CACHE)
+        except Exception as e:  # noqa: BLE001 - names/zetas are enrichment, not fatal
+            print(f"WARN game-data enrichment unavailable ({e}); using base IDs",
+                  file=sys.stderr)
+            maps = None
+        roster = normalize_comlink(payload, maps)
     else:
         try:
             payload = http_json(SWGOH_GG.format(ally=ally))
