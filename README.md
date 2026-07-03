@@ -1,13 +1,14 @@
 # SWGOH Roster Dashboard
 
-Access your **Star Wars: Galaxy of Heroes** roster — and ask Claude strategy
+Access your **Star Wars: Galaxy of Heroes** roster — and ask an AI strategy
 questions about it, **with a game screenshot for context** — from any device
-(iPhone, MacBook, any browser), without Claude Code running on your laptop.
-Hosted free on an Oracle Always-Free VM and refreshed by a daily timer.
+(iPhone, MacBook, any browser). Hosted free on an Oracle Always-Free VM and
+refreshed by a daily timer.
 
 Ask a question, attach or paste a screenshot (an enemy defense, a mod, a
-character screen), and Claude answers using both the image and your actual
-roster. Protected by a PIN so it isn't open on the internet.
+character screen), and **Gemini** answers using both the image and your actual
+roster. Runs on Gemini's free API tier. Protected by a PIN so it isn't open on
+the internet.
 
 Zero dependencies — Python standard library only.
 
@@ -17,7 +18,7 @@ Zero dependencies — Python standard library only.
 |------|------|
 | `fetch_swgoh.py` | Pulls your roster from the free **swgoh.gg** API → writes `swgoh_data.js`. Has a `mock` source for offline testing. |
 | `swgoh.html` | The dashboard. KPIs, sortable/filterable roster, and an Ask box. |
-| `ask_server.py` | Serves the page + `POST /api/ask`, which calls the Claude API with your roster as context. Your API key stays server-side. |
+| `ask_server.py` | Serves the page + `POST /api/ask`, which calls the Gemini API with your roster (and optional screenshot) as context. Your API key stays server-side. |
 | `swgoh_data.js` | Auto-generated roster data. |
 | `deploy/` | systemd units + Caddy config for the free always-on Oracle VM. |
 | `docs/swgoh.md` | Full data-source rationale and deploy notes. |
@@ -29,14 +30,13 @@ python3 fetch_swgoh.py mock --dry-run    # try the pipeline, no network
 python3 fetch_swgoh.py swgoh             # pull YOUR real roster -> swgoh_data.js
 ```
 
-Then turn on the Ask box (needs an Anthropic API key from
-<https://console.anthropic.com> — pay-as-you-go, a few cents per question on
-Opus; this is separate from a Claude subscription). Copy `.env.example` to
-`.env` for the full list of settings:
+Then turn on the Ask box (needs a Gemini API key from
+<https://aistudio.google.com/app/apikey> — free tier, separate from any Gemini
+subscription). Copy `.env.example` to `.env` for the full list of settings:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-your-key-here
-export ASK_MODEL=claude-opus-4-8         # optional; best screenshot advice
+export GEMINI_API_KEY=AIza-your-key-here
+export ASK_MODEL=gemini-2.5-flash        # optional; -pro for sharper answers
 export APP_PIN=1234                       # optional locally; required in prod
 export AUTH_SECRET=some-long-random-string
 python3 ask_server.py                    # http://127.0.0.1:8787

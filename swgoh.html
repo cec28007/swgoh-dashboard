@@ -72,7 +72,7 @@
   <div class="ask">
     <strong>🤖 Ask about your roster</strong>
     <div class="muted" style="font-size:12px;margin:4px 0 8px">
-      e.g. "who can I beat this defense with?" — attach or paste a game screenshot for context. Powered by Claude, using your roster below.
+      e.g. "who can I beat this defense with?" — attach or paste a game screenshot for context. Powered by Gemini, using your roster below.
     </div>
     <textarea id="q" placeholder="Ask a strategy question… (you can paste a screenshot too)"></textarea>
     <div class="attachRow">
@@ -198,7 +198,7 @@
     $(s).addEventListener("input", render));
   render();
 
-  // --- Ask box: question + optional screenshot -> /api/ask (Claude vision) ---
+  // --- Ask box: question + optional screenshot -> /api/ask (Gemini vision) ---
   let attached = null;  // { media_type, data } for the current screenshot
 
   function fileToAttached(file) {

@@ -30,25 +30,25 @@ class TestBuildPayload(unittest.TestCase):
         return {"name": "C", "units": [{"name": "Rotta", "type": "character", "stars": 7,
                 "gear_level": 13, "relic": 5, "zetas": 0, "omicrons": 0, "power": 1}]}
 
+    def test_model_is_gemini(self):
+        self.assertTrue(ask_server.MODEL.startswith("gemini"))
+
     def test_text_only(self):
         p = ask_server.build_payload("who wins?", self._base(), None)
-        self.assertEqual(p["model"], "claude-opus-4-8")
-        self.assertEqual(p["max_tokens"], 2048)
-        content = p["messages"][0]["content"]
-        self.assertTrue(all(b["type"] == "text" for b in content))
-        roster_block = content[0]
-        self.assertEqual(roster_block["cache_control"], {"type": "ephemeral"})
-        self.assertIn("Rotta", roster_block["text"])
-        self.assertIn("who wins?", content[-1]["text"])
+        self.assertEqual(p["generationConfig"]["maxOutputTokens"], ask_server.MAX_TOKENS)
+        self.assertIn("SWGOH", p["system_instruction"]["parts"][0]["text"])
+        parts = p["contents"][0]["parts"]
+        self.assertTrue(all("text" in pt for pt in parts))
+        self.assertIn("Rotta", parts[0]["text"])
+        self.assertEqual(parts[-1]["text"], "Question: who wins?")
 
-    def test_with_image_prepends_image_block(self):
+    def test_with_image_prepends_inline_data(self):
         img = {"media_type": "image/png", "data": "QUJD"}
         p = ask_server.build_payload("counter this", self._base(), img)
-        content = p["messages"][0]["content"]
-        self.assertEqual(content[0]["type"], "image")
-        self.assertEqual(content[0]["source"]["media_type"], "image/png")
-        self.assertEqual(content[0]["source"]["data"], "QUJD")
-        self.assertEqual(content[-1]["text"], "Question: counter this")
+        parts = p["contents"][0]["parts"]
+        self.assertEqual(parts[0]["inline_data"]["mime_type"], "image/png")
+        self.assertEqual(parts[0]["inline_data"]["data"], "QUJD")
+        self.assertEqual(parts[-1]["text"], "Question: counter this")
 
 
 class TestValidateImage(unittest.TestCase):
@@ -69,39 +69,39 @@ class TestValidateImage(unittest.TestCase):
         self.assertIsNone(ask_server.validate_image({"media_type": "image/png", "data": ok}))
 
 
-class TestAskClaude(unittest.TestCase):
+class TestAskAi(unittest.TestCase):
     def test_requires_key(self):
         with mock.patch.dict(ask_server.os.environ, {}, clear=True):
             with self.assertRaises(RuntimeError):
-                ask_server.ask_claude("q", {"units": []})
+                ask_server.ask_ai("q", {"units": []})
 
     def test_returns_joined_text_and_passes_image(self):
         captured = {}
 
         def fake_post(payload, key):
             captured["payload"] = payload
-            return {"content": [{"type": "text", "text": "Rey "},
-                                {"type": "text", "text": "wins"}]}
+            return {"candidates": [{"content": {"parts": [
+                {"text": "Rey "}, {"text": "wins"}]}}]}
 
-        with mock.patch.dict(ask_server.os.environ, {"ANTHROPIC_API_KEY": "sk-x"}), \
-                mock.patch.object(ask_server, "post_to_anthropic", fake_post):
-            out = ask_server.ask_claude("beat this", {"units": []},
-                                        {"media_type": "image/png", "data": "QUJD"})
+        with mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "k"}), \
+                mock.patch.object(ask_server, "post_to_gemini", fake_post):
+            out = ask_server.ask_ai("beat this", {"units": []},
+                                    {"media_type": "image/png", "data": "QUJD"})
         self.assertEqual(out, "Rey wins")
-        self.assertEqual(captured["payload"]["messages"][0]["content"][0]["type"], "image")
+        self.assertIn("inline_data", captured["payload"]["contents"][0]["parts"][0])
 
     def test_rejects_bad_image_before_network(self):
         called = {"n": 0}
 
         def fake_post(payload, key):
             called["n"] += 1
-            return {"content": []}
+            return {"candidates": []}
 
-        with mock.patch.dict(ask_server.os.environ, {"ANTHROPIC_API_KEY": "sk-x"}), \
-                mock.patch.object(ask_server, "post_to_anthropic", fake_post):
+        with mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "k"}), \
+                mock.patch.object(ask_server, "post_to_gemini", fake_post):
             with self.assertRaises(ValueError):
-                ask_server.ask_claude("q", {"units": []},
-                                      {"media_type": "image/tiff", "data": "QQ=="})
+                ask_server.ask_ai("q", {"units": []},
+                                  {"media_type": "image/tiff", "data": "QQ=="})
         self.assertEqual(called["n"], 0)
 
 

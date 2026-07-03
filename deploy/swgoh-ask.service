@@ -5,15 +5,15 @@
 # file), never in git. Set APP_PIN + AUTH_SECRET to lock the page and the
 # paid Ask box; leave APP_PIN blank only for an unlocked local test.
 [Unit]
-Description=SWGOH dashboard + Claude Ask endpoint
+Description=SWGOH dashboard + Gemini Ask endpoint
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 User=ubuntu
 WorkingDirectory=/home/ubuntu/swgoh-dashboard
-Environment=ANTHROPIC_API_KEY=sk-ant-REPLACE-ME
-Environment=ASK_MODEL=claude-opus-4-8
+Environment=GEMINI_API_KEY=AIza-REPLACE-ME
+Environment=ASK_MODEL=gemini-2.5-flash
 Environment=APP_PIN=REPLACE-WITH-YOUR-PIN
 Environment=AUTH_SECRET=REPLACE-WITH-A-LONG-RANDOM-STRING
 Environment=ASK_PORT=8787

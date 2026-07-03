@@ -43,9 +43,10 @@ class TestHTTP(unittest.TestCase):
         self.assertEqual(code, 200)
         cookie = hdrs["Set-Cookie"].split(";")[0]
 
-        with mock.patch.object(ask_server, "post_to_anthropic",
-                               lambda p, k: {"content": [{"type": "text", "text": "ok"}]}), \
-                mock.patch.dict(ask_server.os.environ, {"ANTHROPIC_API_KEY": "x"}):
+        with mock.patch.object(ask_server, "post_to_gemini",
+                               lambda p, k: {"candidates": [{"content": {"parts": [
+                                   {"text": "ok"}]}}]}), \
+                mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "x"}):
             code, body, _ = self._post(
                 "/api/ask", {"question": "q", "roster": {"units": []}}, cookie=cookie)
         self.assertEqual(code, 200)
@@ -58,7 +59,7 @@ class TestHTTP(unittest.TestCase):
     def test_bad_image_returns_400(self):
         code, _, hdrs = self._post("/api/login", {"pin": "1234"})
         cookie = hdrs["Set-Cookie"].split(";")[0]
-        with mock.patch.dict(ask_server.os.environ, {"ANTHROPIC_API_KEY": "x"}):
+        with mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "x"}):
             code, body, _ = self._post(
                 "/api/ask",
                 {"question": "q", "roster": {"units": []},

@@ -2,12 +2,14 @@
 """Tiny server for the dashboard's "Ask" box.
 
 Serves the static dashboard AND a POST /api/ask endpoint that forwards your
-question plus your roster to the Claude API and returns the answer. The API key
-lives only in the server's environment — it is never sent to the browser or
-committed to git.
+question, your roster, and an optional game screenshot to the Gemini API and
+returns the answer. The API key lives only in the server's environment — it is
+never sent to the browser or committed to git. An optional PIN (APP_PIN) gates
+the page and the endpoint.
 
 Run on the Oracle VM (behind Caddy, same as the Tesla setup):
-    export ANTHROPIC_API_KEY=sk-ant-...
+    export GEMINI_API_KEY=AIza...
+    export APP_PIN=1234 AUTH_SECRET=long-random-string   # optional lock
     python3 ask_server.py            # listens on 127.0.0.1:8787
 
 Then point Caddy at it (see docs/swgoh.md). Zero dependencies — stdlib only.
@@ -24,11 +26,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("ASK_PORT", "8787"))
-MODEL = os.environ.get("ASK_MODEL", "claude-opus-4-8")
-MAX_TOKENS = int(os.environ.get("ASK_MAX_TOKENS", "2048"))
+MODEL = os.environ.get("ASK_MODEL", "gemini-2.5-flash")
+# Gemini 2.5 spends "thinking" tokens against this budget, so keep it generous.
+MAX_TOKENS = int(os.environ.get("ASK_MAX_TOKENS", "4096"))
 MAX_IMAGE_BYTES = 4 * 1024 * 1024
 ALLOWED_MEDIA_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
-API_URL = "https://api.anthropic.com/v1/messages"
+API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 # Optional PIN lock. When APP_PIN is empty the lock is disabled (local dev).
 APP_PIN = os.environ.get("APP_PIN", "")
@@ -146,56 +149,48 @@ def validate_image(image):
 
 
 def build_payload(question, roster, image):
-    """Build the Anthropic Messages request dict.
+    """Build the Gemini generateContent request dict.
 
     image, when present, is {"media_type": str, "data": <base64 str>} and is
-    placed as the first content block. The roster block carries cache_control so
-    repeated questions in a sitting reuse it cheaply.
+    placed as the first part so the model reads the screenshot before the text.
     """
-    content = []
+    parts = []
     if image:
-        content.append({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": image["media_type"],
-                "data": image["data"],
-            },
-        })
-    content.append({
-        "type": "text",
-        "text": f"My roster:\n{json.dumps(slim_roster(roster))}",
-        "cache_control": {"type": "ephemeral"},
-    })
-    content.append({"type": "text", "text": f"Question: {question}"})
+        parts.append({"inline_data": {
+            "mime_type": image["media_type"], "data": image["data"]}})
+    parts.append({"text": f"My roster:\n{json.dumps(slim_roster(roster))}"})
+    parts.append({"text": f"Question: {question}"})
     return {
-        "model": MODEL,
-        "max_tokens": MAX_TOKENS,
-        "system": SYSTEM,
-        "messages": [{"role": "user", "content": content}],
+        "system_instruction": {"parts": [{"text": SYSTEM}]},
+        "contents": [{"role": "user", "parts": parts}],
+        "generationConfig": {"maxOutputTokens": MAX_TOKENS},
     }
 
 
-def post_to_anthropic(payload, key):
-    """Send the request to the Anthropic Messages API and return the parsed JSON."""
+def post_to_gemini(payload, key):
+    """Send the request to the Gemini API and return the parsed JSON."""
+    url = f"{API_BASE}/{MODEL}:generateContent"
     body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(API_URL, data=body, headers={
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
+    req = urllib.request.Request(url, data=body, headers={
+        "x-goog-api-key": key,
         "content-type": "application/json",
     })
     with urllib.request.urlopen(req, timeout=60) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def ask_claude(question, roster, image=None):
-    key = os.environ.get("ANTHROPIC_API_KEY")
+def ask_ai(question, roster, image=None):
+    key = os.environ.get("GEMINI_API_KEY")
     if not key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in the server environment")
+        raise RuntimeError("GEMINI_API_KEY is not set in the server environment")
     validate_image(image)
     payload = build_payload(question, roster, image)
-    out = post_to_anthropic(payload, key)
-    return "".join(b.get("text", "") for b in out.get("content", []))
+    out = post_to_gemini(payload, key)
+    candidates = out.get("candidates", [])
+    if not candidates:
+        raise RuntimeError(out.get("error", {}).get("message", "No answer returned."))
+    parts = candidates[0].get("content", {}).get("parts", [])
+    return "".join(p.get("text", "") for p in parts)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -231,7 +226,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(401, {"error": "locked"})
             try:
                 req = self._read_json()
-                answer = ask_claude(
+                answer = ask_ai(
                     req.get("question", ""), req.get("roster", {}), req.get("image"))
                 return self._send(200, {"answer": answer})
             except ValueError as e:  # image guard / bad input

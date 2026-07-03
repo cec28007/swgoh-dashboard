@@ -1,17 +1,16 @@
 # SWGOH roster dashboard — access your profile from anywhere
 
 A zero-dependency dashboard for your Star Wars: Galaxy of Heroes roster, plus an
-"Ask" box that answers strategy questions using the **Claude API** with your
-roster as context — and, when you attach a **game screenshot**, Claude's vision
+"Ask" box that answers strategy questions using the **Gemini API** with your
+roster as context — and, when you attach a **game screenshot**, Gemini's vision
 reads the image (an enemy defense, a mod, a character screen) and answers from
-what you actually own. A PIN protects the page and the paid endpoint. Hosted
-free on an **Oracle Always-Free VM** and refreshed by a daily timer — so you can
-open it from your iPhone, MacBook, or any browser without Claude Code running on
-your laptop.
+what you actually own. A PIN protects the page and the endpoint. Hosted free on
+an **Oracle Always-Free VM** and refreshed by a daily timer — so you can open it
+from your iPhone, MacBook, or any browser.
 
 This is the same architecture as the Tesla dashboard in this repo
 (`fetch_tesla.py` -> `data.js` -> static page on the Oracle VM), with two
-additions: SWGOH as the data source, and a small Claude-backed Q&A endpoint.
+additions: SWGOH as the data source, and a small Gemini-backed Q&A endpoint.
 
 ## The pieces
 
@@ -19,7 +18,7 @@ additions: SWGOH as the data source, and a small Claude-backed Q&A endpoint.
 |------|------|
 | `fetch_swgoh.py` | Pulls your roster from the free **swgoh.gg** API -> writes `swgoh_data.js`. |
 | `swgoh.html` | The dashboard. Reads `swgoh_data.js`. KPIs, sortable/filterable roster, Ask box. |
-| `ask_server.py` | Serves the page + a `POST /api/ask` endpoint that calls Claude. Key stays server-side. |
+| `ask_server.py` | Serves the page + a `POST /api/ask` endpoint that calls Gemini. Key stays server-side. |
 | `swgoh_data.js` | Auto-generated roster data (committed so the page works as a static file too). |
 
 ## Quick start (local)
@@ -36,22 +35,23 @@ Ally code resolution: `--ally 611121817`, else `SWGOH_ALLY_CODE` env var, else t
 ## Turn on the Ask box
 
 The Ask box posts to `POST /api/ask`, which `ask_server.py` answers by calling
-Claude. Your API key lives **only** in the server environment — never in the
-browser or git. When a screenshot is attached it is sent as a base64 image
-block alongside your roster; the roster block is marked cacheable so repeated
-questions in a sitting cost far less.
+Gemini. Your API key lives **only** in the server environment — never in the
+browser or git. When a screenshot is attached it is sent as a base64
+`inline_data` part alongside your roster.
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...      # get one at console.anthropic.com
-export ASK_MODEL=claude-opus-4-8         # optional; best screenshot advice
+export GEMINI_API_KEY=AIza...            # get one at aistudio.google.com/app/apikey
+export ASK_MODEL=gemini-2.5-flash        # optional; -pro for sharper answers
 export APP_PIN=1234                       # lock the page + Ask box
 export AUTH_SECRET=long-random-string     # signs the login cookie
 python3 ask_server.py                    # http://127.0.0.1:8787
 ```
 
 Open <http://127.0.0.1:8787>, enter the PIN, then ask — attach or paste a
-screenshot for "who beats this?" questions. Cost is pay-as-you-go per question
-(a few cents on Opus). With `APP_PIN` unset the lock is off (local dev only).
+screenshot for "who beats this?" questions. Runs on Gemini's free API tier.
+With `APP_PIN` unset the lock is off (local dev only). Note: Gemini 2.5 spends
+"thinking" tokens against the output budget, so `ASK_MAX_TOKENS` defaults to
+4096 to leave room for a full answer.
 
 **Auth model:** `POST /api/login` checks the PIN and sets a signed
 (`AUTH_SECRET`-HMAC) `auth` cookie; both `GET /` and `POST /api/ask` require it.
@@ -62,7 +62,7 @@ look anyone else up. **Images** must be PNG/JPEG/GIF/WebP and ≤ 4 MB.
 
 Set up the VM, a DNS subdomain, and Caddy, then use the units in `deploy/`:
 
-1. **Serve it.** Install `deploy/swgoh-ask.service` (set `ANTHROPIC_API_KEY`,
+1. **Serve it.** Install `deploy/swgoh-ask.service` (set `GEMINI_API_KEY`,
    `APP_PIN`, and `AUTH_SECRET` in its `Environment=` lines), then
    `systemctl enable --now swgoh-ask`. It listens on `127.0.0.1:8787`.
 2. **Front it with Caddy for HTTPS.** HTTPS is **required** — the login cookie is

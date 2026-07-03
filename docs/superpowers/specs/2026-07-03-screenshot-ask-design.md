@@ -5,6 +5,14 @@
 **Repo:** `swgoh-dashboard` (cec28007/swgoh-dashboard)
 **Ally code:** 611121817
 
+> **Amendment (2026-07-03, post-build):** the AI provider was switched from
+> Claude/Anthropic to **Google Gemini** (`gemini-2.5-flash`, free tier) to keep
+> billing off Clint's work Anthropic account. Below, read "Opus / Claude vision /
+> `ANTHROPIC_API_KEY` / `cache_control`" as "Gemini / Gemini vision /
+> `GEMINI_API_KEY` / (no caching)". The design — attach/paste screenshot + PIN +
+> roster-grounded vision answer — is otherwise unchanged. See README/docs for the
+> shipped shape.
+
 ---
 
 ## Why this repo (and not swgoh-mod-planner)
