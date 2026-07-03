@@ -51,5 +51,23 @@ class TestBuildPayload(unittest.TestCase):
         self.assertEqual(content[-1]["text"], "Question: counter this")
 
 
+class TestValidateImage(unittest.TestCase):
+    def test_none_ok(self):
+        self.assertIsNone(ask_server.validate_image(None))
+
+    def test_bad_media_type(self):
+        with self.assertRaises(ValueError):
+            ask_server.validate_image({"media_type": "image/tiff", "data": "QQ=="})
+
+    def test_oversize(self):
+        big = base64.b64encode(b"x" * (4 * 1024 * 1024 + 1)).decode()
+        with self.assertRaises(ValueError):
+            ask_server.validate_image({"media_type": "image/png", "data": big})
+
+    def test_ok(self):
+        ok = base64.b64encode(b"hello").decode()
+        self.assertIsNone(ask_server.validate_image({"media_type": "image/png", "data": ok}))
+
+
 if __name__ == "__main__":
     unittest.main()

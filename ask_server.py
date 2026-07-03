@@ -12,6 +12,8 @@ Run on the Oracle VM (behind Caddy, same as the Tesla setup):
 
 Then point Caddy at it (see docs/swgoh.md). Zero dependencies — stdlib only.
 """
+import base64
+import binascii
 import json
 import os
 import urllib.request
@@ -21,6 +23,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("ASK_PORT", "8787"))
 MODEL = os.environ.get("ASK_MODEL", "claude-opus-4-8")
 MAX_TOKENS = int(os.environ.get("ASK_MAX_TOKENS", "2048"))
+MAX_IMAGE_BYTES = 4 * 1024 * 1024
+ALLOWED_MEDIA_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
 API_URL = "https://api.anthropic.com/v1/messages"
 
 SYSTEM = (
@@ -50,6 +54,22 @@ def slim_roster(roster):
         for u in roster.get("units", [])
     ]
     return slim
+
+
+def validate_image(image):
+    """Raise ValueError if the attached image is unusable; no-op when None."""
+    if image is None:
+        return
+    if image.get("media_type") not in ALLOWED_MEDIA_TYPES:
+        raise ValueError(
+            "Unsupported image type — use a PNG, JPEG, GIF, or WebP screenshot."
+        )
+    try:
+        raw = base64.b64decode(image.get("data", ""), validate=True)
+    except (binascii.Error, ValueError):
+        raise ValueError("Attached image is not valid base64 data.")
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise ValueError("Screenshot is too large — keep it under 4 MB.")
 
 
 def build_payload(question, roster, image):
