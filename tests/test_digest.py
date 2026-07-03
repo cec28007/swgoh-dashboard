@@ -117,7 +117,9 @@ class TestRankWithGemini(unittest.TestCase):
         d = digest.rank_with_gemini("summary", DIFF, CANDS, key="K",
                                     gemini_call=lambda prompt, key: good)
         self.assertEqual(d["headline"], "For you today")
-        self.assertEqual(d["items"][0]["url"], "u1")
+        self.assertEqual(d["items"][0]["url"], "u1")   # Gemini's pick leads
+        # Gemini returned 1; top-up fills from the remaining candidate (u2)
+        self.assertEqual([i["url"] for i in d["items"]], ["u1", "u2"])
 
     def test_falls_back_on_bad_json(self):
         d = digest.rank_with_gemini("summary", DIFF, CANDS, key="K",

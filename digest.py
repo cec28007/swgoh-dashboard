@@ -210,8 +210,20 @@ def _rank_prompt(roster_summary, diff, candidates):
     )
 
 
+def _top_up(items, diff, candidates, target=8):
+    """Ensure a full panel: fill from the deterministic fallback (no dup urls)."""
+    have = {i.get("url") for i in items}
+    for extra in fallback_rank(diff, candidates, cap=target * 2)["items"]:
+        if len(items) >= target:
+            break
+        if extra["url"] not in have:
+            items.append(extra)
+            have.add(extra["url"])
+    return items
+
+
 def rank_with_gemini(roster_summary, diff, candidates, key, gemini_call=gemini_generate):
-    """Ask Gemini to rank candidates; fall back to a heuristic on any failure."""
+    """Ask Gemini to rank candidates; top up / fall back so the panel is full."""
     if not candidates:
         return {"headline": "No new content today", "items": []}
     try:
@@ -220,7 +232,8 @@ def rank_with_gemini(roster_summary, diff, candidates, key, gemini_call=gemini_g
         valid = [i for i in d.get("items", []) if i.get("url") and i.get("title")]
         if not valid:
             raise ValueError("no valid items")
-        return {"headline": d.get("headline") or "Today for you", "items": valid[:8]}
+        headline = d.get("headline") or "Today for you"
+        return {"headline": headline, "items": _top_up(valid[:8], diff, candidates)}
     except Exception:  # noqa: BLE001 - any failure -> deterministic fallback
         return fallback_rank(diff, candidates)
 
