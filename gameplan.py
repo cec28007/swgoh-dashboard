@@ -11,11 +11,42 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GOALS_PATH = os.path.join(HERE, "goals.json")
+KNOWLEDGE_PATH = os.path.join(HERE, "knowledge.json")
 
 
 def load_goals(path=GOALS_PATH):
     with open(path) as f:
         return json.load(f).get("galactic_legends", [])
+
+
+def load_knowledge(path=KNOWLEDGE_PATH):
+    """The living meta layer (farming/gear/what's-meta). {} if absent."""
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def _knowledge_block(knowledge):
+    """Render the meta layer as prompt lines; '' when there's nothing useful."""
+    if not knowledge:
+        return ""
+    sections = [
+        ("acceleration_tips", "High-value acceleration tips (actionable)"),
+        ("farming_priorities", "Farming priorities"),
+        ("gear_relic_guidance", "Gear/relic guidance"),
+        ("whats_meta", "What's meta right now"),
+    ]
+    out = []
+    for key, label in sections:
+        items = [i.get("text") for i in knowledge.get(key, []) if i.get("text")]
+        if items:
+            out.append(f"{label}: " + "; ".join(items))
+    if not out:
+        return ""
+    return ("\nLIVING META KNOWLEDGE (community-sourced, factor this in):\n"
+            + "\n".join(f"- {line}" for line in out) + "\n")
 
 
 def gl_readiness(units, goals):
@@ -32,11 +63,21 @@ def gl_readiness(units, goals):
             u = by_id.get(r["base_id"])
             if u is None:
                 missing.append(r["name"])
-            elif (u.get("relic") or 0) >= r.get("relic", 0) and (u.get("stars") or 0) >= 7:
-                met += 1
             else:
-                under.append({"name": r["name"], "have": u.get("relic") or 0,
-                              "need": r.get("relic", 0)})
+                have_r = u.get("relic") or 0
+                have_s = u.get("stars") or 0
+                need_r = r.get("relic", 0)
+                reason = []
+                if have_s < 7:
+                    reason.append("stars")
+                if have_r < need_r:
+                    reason.append("relic")
+                if not reason:
+                    met += 1
+                else:
+                    under.append({"name": r["name"], "have": have_r,
+                                  "need": need_r, "stars": have_s,
+                                  "reason": reason})
         out.append({
             "id": gl["id"], "name": gl["name"],
             "unlocked": gl["id"] in by_id,
@@ -48,7 +89,7 @@ def gl_readiness(units, goals):
     return out
 
 
-def build_plan_prompt(roster_summary, readiness, tokens, meta_titles):
+def build_plan_prompt(roster_summary, readiness, tokens, meta_titles, knowledge=None):
     owned = [g["name"] for g in readiness if g["unlocked"]]
     lines = []
     for g in readiness:
@@ -58,8 +99,15 @@ def build_plan_prompt(roster_summary, readiness, tokens, meta_titles):
         if g["missing"]:
             bits.append("don't own: " + ", ".join(g["missing"]))
         if g["under_relic"]:
-            bits.append("below target: " + ", ".join(
-                f"{u['name']} R{u['have']}(need R{u['need']})" for u in g["under_relic"]))
+            parts = []
+            for u in g["under_relic"]:
+                gap = []
+                if "stars" in u.get("reason", []):
+                    gap.append(f"{u.get('stars', 0)}★→7★")
+                if "relic" in u.get("reason", []):
+                    gap.append(f"R{u['have']}→R{u['need']}")
+                parts.append(f"{u['name']} ({', '.join(gap)})")
+            bits.append("below target: " + ", ".join(parts))
         lines.append(f"- {g['name']}: " + "; ".join(bits))
     tok = {k: v for k, v in (tokens or {}).items() if str(v).strip()}
     token_block = ("\nCurrent token balances (spend advice): "
@@ -85,7 +133,7 @@ def build_plan_prompt(roster_summary, readiness, tokens, meta_titles):
         + owned_block
         + "GALACTIC LEGEND REQUIREMENT READINESS (your roster vs each GL's full prereqs, closest first):\n"
         + ("\n".join(lines) if lines else "- (all listed GLs already unlocked)") + "\n"
-        + token_block + meta_block
+        + token_block + meta_block + _knowledge_block(knowledge)
     )
 
 
@@ -125,7 +173,10 @@ def store_prompt(priorities):
     )
 
 
-def generate_plan(roster, goals, tokens, meta_titles, gemini_call, key):
+def generate_plan(roster, goals, tokens, meta_titles, gemini_call, key,
+                  knowledge=None):
+    if knowledge is None:
+        knowledge = load_knowledge()
     units = roster.get("units", [])
     chars = sorted([u for u in units if u.get("type") == "character"],
                    key=lambda x: x.get("power") or 0, reverse=True)
@@ -133,5 +184,5 @@ def generate_plan(roster, goals, tokens, meta_titles, gemini_call, key):
                f"{len(chars)} characters. Top: "
                + ", ".join(u.get("name", u["base_id"]) for u in chars[:30]) + ".")
     readiness = gl_readiness(units, goals)
-    prompt = build_plan_prompt(summary, readiness, tokens, meta_titles)
+    prompt = build_plan_prompt(summary, readiness, tokens, meta_titles, knowledge)
     return gemini_call(prompt, key)

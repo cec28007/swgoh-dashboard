@@ -12,3 +12,5 @@ venv/
 
 # OS
 .DS_Store
+*.proposed.json
+KNOWLEDGE_CHANGELOG.md

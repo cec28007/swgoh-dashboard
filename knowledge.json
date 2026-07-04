@@ -1,0 +1,83 @@
+{
+  "_note": "Living SWGOH meta knowledge, read by the Game Plan coach alongside goals.json. Auto-refreshed by refresh_knowledge.py (Tavily + Gemini), human-approved. Each item carries its source + confidence so a stale fact is visibly stale.",
+  "as_of": "2026-07-04",
+  "acceleration_tips": [
+    {
+      "text": "Seed entry — the weekly refresh (and any videos you feed with `--add-video`) will fill this with concrete, high-value tips that accelerate progression.",
+      "source": "seed (manual)",
+      "confidence": "low"
+    },
+    {
+      "text": "**Jotaz Strategy**: Avoid excessively buffing your team when facing the Jotaz boss, as its \"Backhand Sweep\" dispels buffs and increases Jotaz's Offense for each buff removed.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    },
+    {
+      "text": "Use Teva's basic ability, \"On Your Signal,\" to trigger counterattacks (up to 2x per turn) and grant Retribution to all New Republic allies on his turn, boosting team damage.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    },
+    {
+      "text": "His special ability, \"Keeping the Peace,\" hits three times, calls an ally to assist, and applies Offense Down, Defense Down, and Speed Down on critical hits. Use this to set up assists and apply crucial debuffs.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    },
+    {
+      "text": "Teva's unique ability, \"Unauthorized Operation,\" grants him significant Max Health, Protection, and Offense, helping him survive longer and deal more damage. It also applies Crit Chance/Potency Down to all enemies when a New Republic ally is inflicted with a debuff and reduces enemy speed if they are faster than Teva, providing valuable speed control.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    },
+    {
+      "text": "At higher Era Levels (e.g., 80 and above), Teva is an excellent leader for New Republic teams. An effective lineup against Jotaz includes Teva (Leader), Colonel Ward, Zeb Orrelios, R5-D4, and Captain Drogan to maximize damage.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    },
+    {
+      "text": "Prioritize reaching Era Level 80 for Teva. This unlocks his Unique T6 (+15% Max Offense) and Leader T6 (NR allies gain Retribution when using a Special), dramatically boosting his effectiveness as a leader by amplifying counterattack damage and team-wide retribution.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    },
+    {
+      "text": "If your account is below Era Level 80, Teva's leader ability might underperform against Jotaz compared to other leaders.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    },
+    {
+      "text": "Consider using Embo as your leader (e.g., with Cad Bane, Teva, Colonel Ward, Captain Drogan) for better results against Jotaz in Tier 8. Embo's assists can lead to faster contract payouts and higher damage.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    },
+    {
+      "text": "Even if not leading, Teva can be valuable in other teams (like Embo-led Bounty Hunter teams) due to his assist-calling special, which helps trigger Bounty Hunter payouts more frequently.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    },
+    {
+      "text": "**Team Composition for Embo (Lower Era Level)**: A strong Embo-led team against Jotaz for lower-level accounts can include Embo (Leader), Cad Bane, Captain Carson Teva (not leading), Colonel Ward, and Captain Drogan.",
+      "source": "https://youtu.be/_wUzM8nmhi0",
+      "confidence": "high"
+    }
+  ],
+  "farming_priorities": [
+    {
+      "text": "Relic materials (aeromagnifiers, carbonite circuits, bonded databases) are the deepest bottleneck for finishing any Galactic Legend requirement roster — prioritize relic-material stores and hard-node energy over new-character shards once a GL prereq is 7 stars.",
+      "source": "seed (manual)",
+      "confidence": "medium"
+    }
+  ],
+  "gear_relic_guidance": [
+    {
+      "text": "For GL prerequisites, hitting 7 stars is the gate; relic level is the second gate. A unit at the target relic but below 7 stars still does not count — star it first, then relic.",
+      "source": "seed (manual)",
+      "confidence": "high"
+    }
+  ],
+  "whats_meta": [
+    {
+      "text": "Seed entry — refresh_knowledge.py will replace this with current community meta (top teams, new GLs, counters) on its first run.",
+      "source": "seed (manual)",
+      "confidence": "low"
+    }
+  ],
+  "sources": []
+}

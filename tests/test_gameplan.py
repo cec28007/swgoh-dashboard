@@ -37,7 +37,8 @@ class TestGlReadiness(unittest.TestCase):
         self.assertEqual(rey["met"], 1)                 # Rey JT R7 meets R5
         self.assertEqual(rey["missing"], ["Finn"])      # Finn not owned
         leia = self.r["GLLEIA"]
-        self.assertEqual(leia["under_relic"], [{"name": "Hera", "have": 3, "need": 5}])
+        self.assertEqual(leia["under_relic"], [
+            {"name": "Hera", "have": 3, "need": 5, "stars": 7, "reason": ["relic"]}])
 
     def test_ranks_unstarted_before_unlocked(self):
         self.assertEqual(self.order[0], "GLREY")   # not unlocked comes first
@@ -45,6 +46,19 @@ class TestGlReadiness(unittest.TestCase):
 
     def test_empty_goals(self):
         self.assertEqual(gameplan.gl_readiness([], []), [])
+
+    def test_relic_met_but_under_7_stars_is_star_gap(self):
+        # Regression: a unit at/above its relic target but below 7 stars must
+        # be reported as a STAR gap, never counted as met (the "Sith Trooper"
+        # bug that made the coach say relic was the last step).
+        goals = [{"id": "GLREY", "name": "Rey", "requirements": [
+            {"base_id": "REYJEDITRAINING", "name": "Rey JT", "relic": 5}]}]
+        units = [_u("REYJEDITRAINING", "Rey JT", stars=6, relic=7)]
+        rey = gameplan.gl_readiness(units, goals)[0]
+        self.assertEqual(rey["met"], 0)
+        self.assertEqual(rey["under_relic"], [
+            {"name": "Rey JT", "have": 7, "need": 5, "stars": 6,
+             "reason": ["stars"]}])
 
 
 class TestBuildPlanPrompt(unittest.TestCase):
@@ -62,6 +76,18 @@ class TestBuildPlanPrompt(unittest.TestCase):
     def test_omits_token_section_when_blank(self):
         p = gameplan.build_plan_prompt("s", [], {}, [])
         self.assertNotIn("Current token balances", p)
+
+    def test_includes_knowledge_meta_layer(self):
+        know = {"acceleration_tips": [
+                    {"text": "refresh sim tickets twice daily", "source": "v", "confidence": "high"}],
+                "farming_priorities": [
+                    {"text": "relic mats first", "source": "x", "confidence": "high"}],
+                "whats_meta": [
+                    {"text": "GAC is Datacron heavy", "source": "y", "confidence": "medium"}]}
+        p = gameplan.build_plan_prompt("s", [], {}, [], knowledge=know)
+        self.assertIn("sim tickets", p)
+        self.assertIn("relic mats first", p)
+        self.assertIn("Datacron", p)
 
 
 class TestGeneratePlan(unittest.TestCase):

@@ -1,95 +1,467 @@
 {
-  "_note": "Galactic Legend FULL prerequisite rosters (curated). 'requirements' = the units you need at 7★ + the listed relic to unlock/complete each GL. Relic targets default to 5 (many keystones actually want R7 — adjust per unit). This is a maintained seed: verify against the current in-game Journey Guide and correct as CG changes requirements or adds GLs. base_ids are validated against game data.",
+  "_note": "GL full unlock requirements (units at 7 stars + listed relic), sourced from swgohevents.com and validated against game data. Update as CG changes requirements / adds GLs.",
   "galactic_legends": [
-    {"id": "SUPREMELEADERKYLOREN", "name": "Supreme Leader Kylo Ren", "faction": "First Order", "requirements": [
-      {"base_id": "KYLOREN", "name": "Kylo Ren", "relic": 5},
-      {"base_id": "KYLORENUNMASKED", "name": "Kylo Ren (Unmasked)", "relic": 5},
-      {"base_id": "GENERALHUX", "name": "General Hux", "relic": 5},
-      {"base_id": "PHASMA", "name": "Captain Phasma", "relic": 5},
-      {"base_id": "FIRSTORDEROFFICERMALE", "name": "First Order Officer", "relic": 5},
-      {"base_id": "FIRSTORDERTROOPER", "name": "First Order Stormtrooper", "relic": 5},
-      {"base_id": "FIRSTORDEREXECUTIONER", "name": "First Order Executioner", "relic": 5},
-      {"base_id": "FIRSTORDERTIEPILOT", "name": "First Order TIE Pilot", "relic": 5},
-      {"base_id": "FIRSTORDERSPECIALFORCESPILOT", "name": "First Order SF TIE Pilot", "relic": 5},
-      {"base_id": "FOSITHTROOPER", "name": "Sith Trooper", "relic": 5}]},
-    {"id": "SITHPALPATINE", "name": "Sith Eternal Emperor", "faction": "Empire", "requirements": [
-      {"base_id": "EMPERORPALPATINE", "name": "Emperor Palpatine", "relic": 5},
-      {"base_id": "VADER", "name": "Darth Vader", "relic": 5},
-      {"base_id": "GRANDADMIRALTHRAWN", "name": "Grand Admiral Thrawn", "relic": 5},
-      {"base_id": "ADMIRALPIETT", "name": "Admiral Piett", "relic": 5},
-      {"base_id": "DARTHSIDIOUS", "name": "Darth Sidious", "relic": 5},
-      {"base_id": "ROYALGUARD", "name": "Emperor's Royal Guard", "relic": 5},
-      {"base_id": "SHORETROOPER", "name": "Shoretrooper", "relic": 5},
-      {"base_id": "DEATHTROOPER", "name": "Death Trooper", "relic": 5},
-      {"base_id": "TIEFIGHTERPILOT", "name": "TIE Fighter Pilot", "relic": 5},
-      {"base_id": "STORMTROOPER", "name": "Stormtrooper", "relic": 5},
-      {"base_id": "VEERS", "name": "General Veers", "relic": 5},
-      {"base_id": "COLONELSTARCK", "name": "Colonel Starck", "relic": 5},
-      {"base_id": "STARKILLER", "name": "Starkiller", "relic": 5}]},
-    {"id": "GLREY", "name": "Rey (Galactic Legend)", "faction": "Resistance", "requirements": [
-      {"base_id": "REYJEDITRAINING", "name": "Rey (Jedi Training)", "relic": 5},
-      {"base_id": "EPIXPOE", "name": "Resistance Hero Poe", "relic": 5},
-      {"base_id": "EPIXFINN", "name": "Resistance Hero Finn", "relic": 5},
-      {"base_id": "AMILYNHOLDO", "name": "Amilyn Holdo", "relic": 5},
-      {"base_id": "BB8", "name": "BB-8", "relic": 5},
-      {"base_id": "POE", "name": "Poe Dameron", "relic": 5},
-      {"base_id": "FINN", "name": "Finn", "relic": 5},
-      {"base_id": "REY", "name": "Rey (Scavenger)", "relic": 5},
-      {"base_id": "RESISTANCETROOPER", "name": "Resistance Trooper", "relic": 5},
-      {"base_id": "RESISTANCEPILOT", "name": "Resistance Pilot", "relic": 5},
-      {"base_id": "ROSETICO", "name": "Rose Tico", "relic": 5},
-      {"base_id": "SMUGGLERHAN", "name": "Veteran Smuggler Han Solo", "relic": 5},
-      {"base_id": "SMUGGLERCHEWBACCA", "name": "Veteran Smuggler Chewbacca", "relic": 5}]},
-    {"id": "JEDIMASTERKENOBI", "name": "Jedi Master Kenobi", "faction": "Jedi", "requirements": [
-      {"base_id": "GRANDMASTERYODA", "name": "Grand Master Yoda", "relic": 5},
-      {"base_id": "GENERALKENOBI", "name": "General Kenobi", "relic": 5},
-      {"base_id": "QUIGONJINN", "name": "Qui-Gon Jinn", "relic": 5},
-      {"base_id": "SHAAKTI", "name": "Shaak Ti", "relic": 5},
-      {"base_id": "AAYLASECURA", "name": "Aayla Secura", "relic": 5},
-      {"base_id": "AHSOKATANO", "name": "Ahsoka Tano", "relic": 5},
-      {"base_id": "PLOKOON", "name": "Plo Koon", "relic": 5},
-      {"base_id": "LUMINARAUNDULI", "name": "Luminara Unduli", "relic": 5},
-      {"base_id": "MACEWINDU", "name": "Mace Windu", "relic": 5},
-      {"base_id": "KITFISTO", "name": "Kit Fisto", "relic": 5},
-      {"base_id": "EETHKOTH", "name": "Eeth Koth", "relic": 5}]},
-    {"id": "LORDVADER", "name": "Lord Vader", "faction": "Empire / Bad Batch", "requirements": [
-      {"base_id": "BADBATCHHUNTER", "name": "Hunter", "relic": 5},
-      {"base_id": "BADBATCHTECH", "name": "Tech", "relic": 5},
-      {"base_id": "BADBATCHWRECKER", "name": "Wrecker", "relic": 5},
-      {"base_id": "BADBATCHECHO", "name": "Echo", "relic": 5},
-      {"base_id": "BADBATCHOMEGA", "name": "Omega", "relic": 5},
-      {"base_id": "ARCTROOPER501ST", "name": "ARC Trooper", "relic": 5},
-      {"base_id": "GRANDADMIRALTHRAWN", "name": "Grand Admiral Thrawn", "relic": 5},
-      {"base_id": "VADER", "name": "Darth Vader", "relic": 5},
-      {"base_id": "ADMIRALPIETT", "name": "Admiral Piett", "relic": 5},
-      {"base_id": "MOFFGIDEONS1", "name": "Moff Gideon", "relic": 5}]},
-    {"id": "JABBATHEHUTT", "name": "Jabba the Hutt", "faction": "Hutt Cartel", "requirements": [
-      {"base_id": "BOUSHH", "name": "Boushh", "relic": 5},
-      {"base_id": "UNDERCOVERLANDO", "name": "Skiff Guard (Lando)", "relic": 5},
-      {"base_id": "KRRSANTAN", "name": "Krrsantan", "relic": 5},
-      {"base_id": "GAMORREANGUARD", "name": "Gamorrean Guard", "relic": 5},
-      {"base_id": "HUMANTHUG", "name": "Mob Enforcer", "relic": 5},
-      {"base_id": "JAWA", "name": "Jawa", "relic": 5},
-      {"base_id": "JAWAENGINEER", "name": "Jawa Engineer", "relic": 5},
-      {"base_id": "JAWASCAVENGER", "name": "Jawa Scavenger", "relic": 5},
-      {"base_id": "TUSKENRAIDER", "name": "Tusken Raider", "relic": 5}]},
-    {"id": "GRANDMASTERLUKE", "name": "Jedi Master Luke Skywalker", "faction": "Rebel", "requirements": [
-      {"base_id": "WEDGEANTILLES", "name": "Wedge Antilles", "relic": 5},
-      {"base_id": "BIGGSDARKLIGHTER", "name": "Biggs Darklighter", "relic": 5},
-      {"base_id": "C3POLEGENDARY", "name": "C-3PO", "relic": 5},
-      {"base_id": "HANSOLO", "name": "Han Solo", "relic": 5},
-      {"base_id": "CHEWBACCALEGENDARY", "name": "Chewbacca", "relic": 5},
-      {"base_id": "COMMANDERLUKESKYWALKER", "name": "Commander Luke Skywalker", "relic": 5},
-      {"base_id": "HERMITYODA", "name": "Hermit Yoda", "relic": 5},
-      {"base_id": "OLDBENKENOBI", "name": "Obi-Wan Kenobi (Old Ben)", "relic": 5},
-      {"base_id": "R2D2_LEGENDARY", "name": "R2-D2", "relic": 5}]},
-    {"id": "GLLEIA", "name": "Grand Master Leia Organa", "faction": "Rebel", "requirements": [
-      {"base_id": "HERASYNDULLAS3", "name": "Hera Syndulla", "relic": 5},
-      {"base_id": "CHOPPERS3", "name": "Chopper", "relic": 5},
-      {"base_id": "PRINCESSLEIA", "name": "Princess Leia", "relic": 5},
-      {"base_id": "HOTHLEIA", "name": "Rebel Officer Leia", "relic": 5},
-      {"base_id": "ADMINISTRATORLANDO", "name": "Lando Calrissian", "relic": 5},
-      {"base_id": "MONMOTHMA", "name": "Mon Mothma", "relic": 5},
-      {"base_id": "GENERALSYNDULLA", "name": "General Hera Syndulla", "relic": 5}]}
+    {
+      "id": "SUPREMELEADERKYLOREN",
+      "name": "Supreme Leader Kylo Ren",
+      "requirements": [
+        {
+          "base_id": "KYLORENUNMASKED",
+          "name": "Kylo Ren (Unmasked)",
+          "relic": 7
+        },
+        {
+          "base_id": "FIRSTORDERTROOPER",
+          "name": "First Order Stormtrooper",
+          "relic": 5
+        },
+        {
+          "base_id": "FIRSTORDEROFFICERMALE",
+          "name": "First Order Officer",
+          "relic": 5
+        },
+        {
+          "base_id": "KYLOREN",
+          "name": "Kylo Ren",
+          "relic": 7
+        },
+        {
+          "base_id": "PHASMA",
+          "name": "Captain Phasma",
+          "relic": 5
+        },
+        {
+          "base_id": "FIRSTORDEREXECUTIONER",
+          "name": "First Order Executioner",
+          "relic": 5
+        },
+        {
+          "base_id": "SMUGGLERHAN",
+          "name": "Veteran Smuggler Han Solo",
+          "relic": 3
+        },
+        {
+          "base_id": "FOSITHTROOPER",
+          "name": "Sith Trooper",
+          "relic": 5
+        },
+        {
+          "base_id": "FIRSTORDERSPECIALFORCESPILOT",
+          "name": "First Order SF TIE Pilot",
+          "relic": 3
+        },
+        {
+          "base_id": "FIRSTORDERTIEPILOT",
+          "name": "First Order TIE Pilot",
+          "relic": 3
+        },
+        {
+          "base_id": "GENERALHUX",
+          "name": "General Hux",
+          "relic": 5
+        },
+        {
+          "base_id": "EMPERORPALPATINE",
+          "name": "Emperor Palpatine",
+          "relic": 7
+        }
+      ],
+      "source": "swgohevents.com",
+      "as_of": "2026-07-04"
+    },
+    {
+      "id": "GLREY",
+      "name": "Rey (Galactic Legend)",
+      "requirements": [
+        {
+          "base_id": "REYJEDITRAINING",
+          "name": "Rey (Jedi Training)",
+          "relic": 7
+        },
+        {
+          "base_id": "FINN",
+          "name": "Finn",
+          "relic": 5
+        },
+        {
+          "base_id": "RESISTANCETROOPER",
+          "name": "Resistance Trooper",
+          "relic": 5
+        },
+        {
+          "base_id": "REY",
+          "name": "Rey (Scavenger)",
+          "relic": 7
+        },
+        {
+          "base_id": "RESISTANCEPILOT",
+          "name": "Resistance Pilot",
+          "relic": 3
+        },
+        {
+          "base_id": "POE",
+          "name": "Poe Dameron",
+          "relic": 5
+        },
+        {
+          "base_id": "EPIXFINN",
+          "name": "Resistance Hero Finn",
+          "relic": 5
+        },
+        {
+          "base_id": "AMILYNHOLDO",
+          "name": "Amilyn Holdo",
+          "relic": 5
+        },
+        {
+          "base_id": "ROSETICO",
+          "name": "Rose Tico",
+          "relic": 5
+        },
+        {
+          "base_id": "EPIXPOE",
+          "name": "Resistance Hero Poe",
+          "relic": 5
+        },
+        {
+          "base_id": "BB8",
+          "name": "BB-8",
+          "relic": 7
+        },
+        {
+          "base_id": "SMUGGLERCHEWBACCA",
+          "name": "Veteran Smuggler Chewbacca",
+          "relic": 3
+        }
+      ],
+      "source": "swgohevents.com",
+      "as_of": "2026-07-04"
+    },
+    {
+      "id": "JEDIMASTERKENOBI",
+      "name": "Jedi Master Kenobi",
+      "requirements": [
+        {
+          "base_id": "GENERALKENOBI_GLE_INHERIT",
+          "name": "General Kenobi",
+          "relic": 8
+        },
+        {
+          "base_id": "MACEWINDU",
+          "name": "Mace Windu",
+          "relic": 3
+        },
+        {
+          "base_id": "AAYLASECURA",
+          "name": "Aayla Secura",
+          "relic": 3
+        },
+        {
+          "base_id": "BOKATAN",
+          "name": "Bo-Katan Kryze",
+          "relic": 5
+        },
+        {
+          "base_id": "QUIGONJINN",
+          "name": "Qui-Gon Jinn",
+          "relic": 3
+        },
+        {
+          "base_id": "MAGNAGUARD",
+          "name": "IG-100 MagnaGuard",
+          "relic": 5
+        },
+        {
+          "base_id": "CLONESERGEANTPHASEI",
+          "name": "Clone Sergeant - Phase I",
+          "relic": 5
+        },
+        {
+          "base_id": "WATTAMBOR",
+          "name": "Wat Tambor",
+          "relic": 7
+        },
+        {
+          "base_id": "GRIEVOUS_MARQUEE",
+          "name": "General Grievous",
+          "relic": 7
+        },
+        {
+          "base_id": "CADBANE",
+          "name": "Cad Bane",
+          "relic": 5
+        },
+        {
+          "base_id": "CC2224_GLE_INHERIT",
+          "name": "CC-2224 \"Cody\"",
+          "relic": 5
+        },
+        {
+          "base_id": "JANGOFETT",
+          "name": "Jango Fett",
+          "relic": 7
+        },
+        {
+          "base_id": "SHAAKTI",
+          "name": "Shaak Ti",
+          "relic": 7
+        },
+        {
+          "base_id": "GRANDMASTERYODA",
+          "name": "Grand Master Yoda",
+          "relic": 8
+        }
+      ],
+      "source": "swgohevents.com",
+      "as_of": "2026-07-04"
+    },
+    {
+      "id": "SITHPALPATINE",
+      "name": "Sith Eternal Emperor",
+      "requirements": [
+        {
+          "base_id": "ADMIRALPIETT",
+          "name": "Admiral Piett",
+          "relic": 5
+        },
+        {
+          "base_id": "ROYALGUARD",
+          "name": "Royal Guard",
+          "relic": 3
+        },
+        {
+          "base_id": "VADER",
+          "name": "Darth Vader",
+          "relic": 7
+        },
+        {
+          "base_id": "EMPERORPALPATINE",
+          "name": "Emperor Palpatine",
+          "relic": 7
+        },
+        {
+          "base_id": "DIRECTORKRENNIC",
+          "name": "Director Krennic",
+          "relic": 4
+        },
+        {
+          "base_id": "COUNTDOOKU",
+          "name": "Count Dooku",
+          "relic": 6
+        },
+        {
+          "base_id": "SITHMARAUDER",
+          "name": "Sith Marauder",
+          "relic": 7
+        },
+        {
+          "base_id": "DARTHSIDIOUS",
+          "name": "Darth Sidious",
+          "relic": 7
+        },
+        {
+          "base_id": "MAUL",
+          "name": "Darth Maul",
+          "relic": 4
+        },
+        {
+          "base_id": "ANAKINKNIGHT",
+          "name": "Jedi Knight Anakin",
+          "relic": 7
+        },
+        {
+          "base_id": "GRANDMOFFTARKIN",
+          "name": "Grand Moff Tarkin",
+          "relic": 3
+        },
+        {
+          "base_id": "VEERS_SPEEDERBIKERAID",
+          "name": "General Veers",
+          "relic": 3
+        },
+        {
+          "base_id": "COLONELSTARCK",
+          "name": "Colonel Starck",
+          "relic": 3
+        },
+        {
+          "base_id": "GRANDADMIRALTHRAWN",
+          "name": "Grand Admiral Thrawn",
+          "relic": 6
+        }
+      ],
+      "source": "swgohevents.com",
+      "as_of": "2026-07-04"
+    },
+    {
+      "id": "LORDVADER",
+      "name": "Lord Vader",
+      "requirements": [
+        {
+          "base_id": "BADBATCHHUNTER",
+          "name": "Hunter",
+          "relic": 5
+        },
+        {
+          "base_id": "BADBATCHTECH",
+          "name": "Tech",
+          "relic": 5
+        },
+        {
+          "base_id": "BADBATCHWRECKER",
+          "name": "Wrecker",
+          "relic": 5
+        },
+        {
+          "base_id": "TUSKENRAIDER",
+          "name": "Tusken Raider",
+          "relic": 5
+        },
+        {
+          "base_id": "PADMEAMIDALA",
+          "name": "Padmé Amidala",
+          "relic": 8
+        },
+        {
+          "base_id": "GENERALSKYWALKER_GLE_INHERIT",
+          "name": "General Skywalker",
+          "relic": 8
+        },
+        {
+          "base_id": "EMBO",
+          "name": "Embo",
+          "relic": 5
+        },
+        {
+          "base_id": "COUNTDOOKU",
+          "name": "Count Dooku",
+          "relic": 8
+        },
+        {
+          "base_id": "ZAMWESELL",
+          "name": "Zam Wesell",
+          "relic": 7
+        },
+        {
+          "base_id": "GRANDMOFFTARKIN",
+          "name": "Grand Moff Tarkin",
+          "relic": 7
+        },
+        {
+          "base_id": "ARCTROOPER501ST",
+          "name": "ARC Trooper",
+          "relic": 8
+        },
+        {
+          "base_id": "NUTEGUNRAY",
+          "name": "Nute Gunray",
+          "relic": 7
+        },
+        {
+          "base_id": "CT210408",
+          "name": "CT-21-0408 \"Echo\"",
+          "relic": 7
+        },
+        {
+          "base_id": "BADBATCHECHO",
+          "name": "Echo",
+          "relic": 5
+        }
+      ],
+      "source": "swgohevents.com",
+      "as_of": "2026-07-04"
+    },
+    {
+      "id": "JABBATHEHUTT",
+      "name": "Jabba the Hutt",
+      "requirements": [
+        {
+          "base_id": "KRRSANTAN",
+          "name": "Krrsantan",
+          "relic": 5
+        },
+        {
+          "base_id": "HANSOLO",
+          "name": "Han Solo",
+          "relic": 8
+        },
+        {
+          "base_id": "GAMORREANGUARD_GLE_INHERIT",
+          "name": "Gamorrean Guard",
+          "relic": 3
+        },
+        {
+          "base_id": "GREEDO",
+          "name": "Greedo",
+          "relic": 6
+        },
+        {
+          "base_id": "UNDERCOVERLANDO",
+          "name": "Skiff Guard (Lando Calrissian)",
+          "relic": 5
+        },
+        {
+          "base_id": "JEDIKNIGHTLUKE_GLE_INHERIT",
+          "name": "Jedi Knight Luke Skywalker",
+          "relic": 7
+        },
+        {
+          "base_id": "JAWA",
+          "name": "Jawa",
+          "relic": 3
+        },
+        {
+          "base_id": "URORRURRR",
+          "name": "URoRRuR'R'R",
+          "relic": 4
+        },
+        {
+          "base_id": "C3POLEGENDARY_SPEEDERBIKERAID",
+          "name": "C-3PO",
+          "relic": 7
+        },
+        {
+          "base_id": "BOUSHH",
+          "name": "Boushh (Leia Organa)",
+          "relic": 5
+        },
+        {
+          "base_id": "AURRA_SING",
+          "name": "Aurra Sing",
+          "relic": 6
+        },
+        {
+          "base_id": "FENNECSHAND",
+          "name": "Fennec Shand",
+          "relic": 7
+        },
+        {
+          "base_id": "BOBAFETT",
+          "name": "Boba Fett",
+          "relic": 7
+        },
+        {
+          "base_id": "HUMANTHUG",
+          "name": "Mob Enforcer",
+          "relic": 3
+        }
+      ],
+      "source": "swgohevents.com",
+      "as_of": "2026-07-04"
+    },
+    {
+      "id": "GRANDMASTERLUKE",
+      "name": "Jedi Master Luke Skywalker",
+      "requirements": [],
+      "source": "swgohevents.com",
+      "as_of": "2026-07-04"
+    },
+    {
+      "id": "GLLEIA",
+      "name": "Grand Master Leia Organa",
+      "requirements": [],
+      "source": "swgohevents.com",
+      "as_of": "2026-07-04"
+    }
   ]
 }
