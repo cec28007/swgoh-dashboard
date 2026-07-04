@@ -1,6 +1,16 @@
 {
   "_note": "Living SWGOH meta knowledge, read by the Game Plan coach alongside goals.json. Auto-refreshed by refresh_knowledge.py (Tavily + Gemini), human-approved. Each item carries its source + confidence so a stale fact is visibly stale.",
   "as_of": "2026-07-04",
+  "progression_strategy": [
+    {"text": "Energy refreshes are the highest-value crystal spend: take all 3 daily 50-crystal Normal/Fleet refreshes; add the 3 daily 100-crystal Cantina refreshes when speed matters. Grab the 3x daily free bonus energy and never let energy cap.", "source": "https://kahzgul.substack.com/p/a-brief-treatise-on-energy-efficiency", "confidence": "high"},
+    {"text": "Conquest 'red crate' farming is the single biggest cost/time saver in the game — clear hard mode early each Conquest, then datacron-farm the rest. Prioritize a strong Conquest team.", "source": "https://kahzgul.substack.com/p/a-brief-treatise-on-energy-efficiency", "confidence": "high"},
+    {"text": "Farm cost-efficiency order (cheapest first): Conquest units, then Normal/Fleet accelerated nodes, then unaccelerated, then Cantina, then Proving Grounds (most expensive). Prefer the cheaper source when a unit is farmable in more than one place.", "source": "https://kahzgul.substack.com/p/a-brief-treatise-on-energy-efficiency", "confidence": "high"},
+    {"text": "Spread farming across multiple characters instead of resetting single nodes — single-node refreshes cascade in cost. Farm mods from the final tier of Mod Battles for slicing materials.", "source": "https://kahzgul.substack.com/p/a-brief-treatise-on-energy-efficiency", "confidence": "high"},
+    {"text": "Don't over-farm character shards while neglecting gear and relic materials — a wide roster with no gear can't compete. Balance shard energy with gear/relic-mat farming.", "source": "community consensus", "confidence": "medium"},
+    {"text": "At mid-to-late game (~5-7M+ GP) the flywheel is Galactic Legends: each GL wins GAC, TW and arena at once, which raises crystal + Kyber income, which gears the next GL faster. Progressing your closest GL is usually the single highest-ROI investment.", "source": "community consensus", "confidence": "high"},
+    {"text": "Fleet progression path: build the Endurance (Galactic Republic) fleet, add the GR Marauder (needs Bad Batch), move into Negotiator, and farm Bounty Hunter ships (Hound's Tooth first) toward the Executor capital ship — a top fleet-arena and GAC goal.", "source": "SWGOH F2P farming guide 2026 (swgohevents.com/farming-roadmap)", "confidence": "medium"},
+    {"text": "SWGOH rewards patience: steady daily roster expansion without crystal refreshes beats dumping crystals, except to hit a time-limited event or Galactic Legend gate.", "source": "https://kahzgul.substack.com/p/a-brief-treatise-on-energy-efficiency", "confidence": "high"}
+  ],
   "acceleration_tips": [
     {
       "text": "Seed entry — the weekly refresh (and any videos you feed with `--add-video`) will fill this with concrete, high-value tips that accelerate progression.",

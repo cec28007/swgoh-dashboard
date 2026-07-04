@@ -33,6 +33,7 @@ def _knowledge_block(knowledge):
     if not knowledge:
         return ""
     sections = [
+        ("progression_strategy", "How to progress efficiently (authoritative community guidance)"),
         ("acceleration_tips", "High-value acceleration tips (actionable)"),
         ("farming_priorities", "Farming priorities"),
         ("gear_relic_guidance", "Gear/relic guidance"),

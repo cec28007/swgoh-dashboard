@@ -1,0 +1,339 @@
+{
+  "_note": "Meta squads + fleets for Game Health depth/fleet scoring. base_ids validated vs game data (prefers real playable units, not event variants). Refreshable by refresh_knowledge.py.",
+  "as_of": "2026-07-04",
+  "squads": [
+    {
+      "id": "rebels_leia",
+      "name": "Rebels (GL Leia)",
+      "faction": "Rebel",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "GLLEIA",
+        "COMMANDERLUKESKYWALKER",
+        "HANSOLO",
+        "CHEWBACCALEGENDARY",
+        "C3POLEGENDARY"
+      ]
+    },
+    {
+      "id": "jml_jedi",
+      "name": "Jedi (JML)",
+      "faction": "Jedi",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "GRANDMASTERLUKE",
+        "JEDIKNIGHTLUKE",
+        "HERMITYODA",
+        "GENERALKENOBI",
+        "GRANDMASTERYODA"
+      ]
+    },
+    {
+      "id": "glrey_resistance",
+      "name": "Resistance (GL Rey)",
+      "faction": "Resistance",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "GLREY",
+        "RESISTANCETROOPER",
+        "EPIXFINN",
+        "EPIXPOE",
+        "BB8"
+      ]
+    },
+    {
+      "id": "bh_bossk",
+      "name": "Bounty Hunters (Bossk)",
+      "faction": "Bounty Hunter",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "BOSSK",
+        "BOBAFETT",
+        "JANGOFETT",
+        "THEMANDALORIAN",
+        "FENNECSHAND"
+      ]
+    },
+    {
+      "id": "501st_rex",
+      "name": "501st (Rex)",
+      "faction": "501st",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "CAPTAINREX",
+        "CT5555",
+        "CT210408",
+        "ARCTROOPER501ST",
+        "AHSOKATANO"
+      ]
+    },
+    {
+      "id": "geos_padme",
+      "name": "Galactic Republic (Padme)",
+      "faction": "Galactic Republic",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "PADMEAMIDALA",
+        "GENERALKENOBI",
+        "AHSOKATANO",
+        "ANAKINKNIGHT",
+        "C3POLEGENDARY"
+      ]
+    },
+    {
+      "id": "sep_grievous",
+      "name": "Separatists (Grievous)",
+      "faction": "Separatist",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "GRIEVOUS",
+        "B1BATTLEDROIDV2",
+        "B2SUPERBATTLEDROID",
+        "MAGNAGUARD",
+        "DROIDEKA"
+      ]
+    },
+    {
+      "id": "empire_vader",
+      "name": "Empire (Vader)",
+      "faction": "Empire",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "VADER",
+        "EMPERORPALPATINE",
+        "GRANDADMIRALTHRAWN",
+        "GRANDMOFFTARKIN",
+        "VEERS"
+      ]
+    },
+    {
+      "id": "slkr_fo",
+      "name": "First Order (SLKR)",
+      "faction": "First Order",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "SUPREMELEADERKYLOREN",
+        "KYLOREN",
+        "GENERALHUX",
+        "PHASMA",
+        "FIRSTORDEROFFICERMALE"
+      ]
+    },
+    {
+      "id": "see_sith",
+      "name": "Sith Eternal (SEE)",
+      "faction": "Sith",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "SITHPALPATINE",
+        "VADER",
+        "EMPERORPALPATINE",
+        "GRANDMOFFTARKIN",
+        "DARTHSIDIOUS"
+      ]
+    },
+    {
+      "id": "mandos_maul",
+      "name": "Mandalorians (Maul)",
+      "faction": "Mandalorian",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "MAULS7",
+        "BOKATAN",
+        "SABINEWRENS3",
+        "GARSAXON",
+        "CANDEROUSORDO"
+      ]
+    },
+    {
+      "id": "nightsisters",
+      "name": "Nightsisters (Talzin)",
+      "faction": "Nightsister",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "MOTHERTALZIN",
+        "ASAJVENTRESS",
+        "DAKA",
+        "NIGHTSISTERZOMBIE",
+        "NIGHTSISTERSPIRIT"
+      ]
+    },
+    {
+      "id": "jkr_jedi",
+      "name": "Jedi (JKR)",
+      "faction": "Jedi",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "JEDIKNIGHTREVAN",
+        "BASTILASHAN",
+        "JOLEEBINDO",
+        "GENERALKENOBI",
+        "EZRABRIDGERS3"
+      ]
+    },
+    {
+      "id": "imp_troopers",
+      "name": "Imperial Troopers (Iden)",
+      "faction": "Empire",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "IDENVERSIOEMPIRE",
+        "VEERS",
+        "COLONELSTARCK",
+        "DEATHTROOPER",
+        "RANGETROOPER"
+      ]
+    }
+  ],
+  "fleets": [
+    {
+      "id": "gr_endurance",
+      "name": "Galactic Republic (Endurance)",
+      "capital": "CAPITALJEDICRUISER",
+      "ships": [
+        "JEDISTARFIGHTERANAKIN",
+        "JEDISTARFIGHTERAHSOKATANO",
+        "BLADEOFDORIN",
+        "ARC170REX",
+        "ARC170CLONESERGEANT",
+        "JEDISTARFIGHTERCONSULAR"
+      ],
+      "min_ships": 3
+    },
+    {
+      "id": "gr_negotiator",
+      "name": "Galactic Republic (Negotiator)",
+      "capital": "CAPITALNEGOTIATOR",
+      "ships": [
+        "JEDISTARFIGHTERANAKIN",
+        "JEDISTARFIGHTERAHSOKATANO",
+        "BLADEOFDORIN",
+        "ARC170REX",
+        "ARC170CLONESERGEANT",
+        "JEDISTARFIGHTERCONSULAR"
+      ],
+      "min_ships": 3
+    },
+    {
+      "id": "rebel_raddus",
+      "name": "Rebel (Raddus)",
+      "capital": "CAPITALRADDUS",
+      "ships": [
+        "GHOST",
+        "PHANTOM2",
+        "XWINGRED2",
+        "XWINGRED3",
+        "UWINGROGUEONE",
+        "YWINGREBEL"
+      ],
+      "min_ships": 3
+    },
+    {
+      "id": "rebel_homeone",
+      "name": "Rebel (Home One)",
+      "capital": "CAPITALMONCALAMARICRUISER",
+      "ships": [
+        "GHOST",
+        "PHANTOM2",
+        "XWINGRED2",
+        "XWINGRED3",
+        "UWINGROGUEONE",
+        "YWINGREBEL"
+      ],
+      "min_ships": 3
+    },
+    {
+      "id": "empire_executrix",
+      "name": "Empire (Executrix)",
+      "capital": "CAPITALSTARDESTROYER",
+      "ships": [
+        "TIEADVANCED",
+        "TIEFIGHTERIMPERIAL",
+        "TIEBOMBERIMPERIAL",
+        "TIEREAPER"
+      ],
+      "min_ships": 3
+    },
+    {
+      "id": "fo_finalizer",
+      "name": "First Order (Finalizer)",
+      "capital": "CAPITALFINALIZER",
+      "ships": [
+        "TIESILENCER",
+        "TIEFIGHTERFIRSTORDER",
+        "TIEFIGHTERFOSF",
+        "COMMANDSHUTTLE"
+      ],
+      "min_ships": 3
+    },
+    {
+      "id": "bh_executor",
+      "name": "Bounty Hunters (Executor)",
+      "capital": "CAPITALEXECUTOR",
+      "ships": [
+        "HOUNDSTOOTH",
+        "SLAVE1",
+        "XANADUBLOOD",
+        "IG2000",
+        "PUNISHINGONE"
+      ],
+      "min_ships": 4
+    }
+  ]
+}

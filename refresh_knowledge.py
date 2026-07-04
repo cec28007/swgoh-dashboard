@@ -42,6 +42,8 @@ META_QUERIES = [
     ("farming", "SWGOH gear and relic material farming priority guide 2026", None),
     ("new_gl", "SWGOH newest Galactic Legend requirements 2026", REQUIREMENT_DOMAINS),
     ("tips", "SWGOH efficiency tips tricks to accelerate progression f2p 2026", None),
+    ("strategy", "SWGOH progression strategy energy crystal efficiency farming "
+     "priority roadmap what to focus on mid game", None),
     ("community", "SWGOH best tips to progress faster and avoid mistakes",
      ["reddit.com", "gaming-fans.com"]),
 ]
@@ -156,16 +158,20 @@ def build_synthesis_prompt(goals, knowledge, gathered):
         "- Relic values are integers 0-9 (never null). `stars` gate is always 7.\n"
         "- Stamp every changed/added requirement with source (a url from the "
         "research) and confidence (high|medium|low). Leave unchanged facts as-is.\n"
-        "- For knowledge (acceleration_tips, farming_priorities, "
-        "gear_relic_guidance, whats_meta), each item is {text, source, confidence}. "
-        "Refresh whats_meta with what the research shows is current. Populate "
-        "acceleration_tips from any [youtube_tips], [tips], or [community] research "
-        "with CONCRETE actionable tips that speed up progression — keep the existing "
-        "acceleration_tips and add new distinct ones.\n\n"
+        "- For knowledge (progression_strategy, acceleration_tips, "
+        "farming_priorities, gear_relic_guidance, whats_meta), each item is "
+        "{text, source, confidence}. Refresh whats_meta with what the research shows "
+        "is current. Populate acceleration_tips from any [youtube_tips], [tips], or "
+        "[community] research with CONCRETE actionable tips. Maintain "
+        "progression_strategy from [strategy]/[community] research as DURABLE, "
+        "high-level 'how to progress efficiently' guidance (energy/crystal spend, "
+        "farming priority, account-stage direction) — keep existing entries and add "
+        "distinct ones; prefer authoritative sources.\n\n"
         "Reply with ONLY JSON, no prose:\n"
         '{"goals": [<same shape as CURRENT GOALS galactic_legends>], '
-        '"knowledge": {"acceleration_tips":[...], "farming_priorities":[...], '
-        '"gear_relic_guidance":[...], "whats_meta":[...], "sources":[...]}, '
+        '"knowledge": {"progression_strategy":[...], "acceleration_tips":[...], '
+        '"farming_priorities":[...], "gear_relic_guidance":[...], "whats_meta":[...], '
+        '"sources":[...]}, '
         '"changes": ["<one short human sentence per change>"]}\n\n'
         f"CURRENT GOALS:\n{json.dumps(goals, ensure_ascii=False)}\n\n"
         f"CURRENT KNOWLEDGE:\n{json.dumps(knowledge, ensure_ascii=False)}\n\n"

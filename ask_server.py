@@ -27,6 +27,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import gameplan
+import gamehealth
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("ASK_PORT", "8787"))
@@ -381,6 +382,25 @@ class Handler(BaseHTTPRequestHandler):
                     roster, gameplan.load_goals(), req.get("tokens") or {},
                     digest_titles(), gemini_text, key)
                 return self._send(200, {"plan": plan})
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            except Exception as e:  # noqa: BLE001
+                return self._send(500, {"error": str(e)})
+
+        if route == "/api/gamehealth":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            try:
+                req = self._read_json()
+                key = os.environ.get("GEMINI_API_KEY")
+                if not key:
+                    raise RuntimeError("GEMINI_API_KEY is not set in the server environment")
+                roster = _load_assign_json(os.path.join(HERE, "swgoh_data.js"))
+                result = gamehealth.generate_health(
+                    roster, gameplan.load_goals(), gamehealth.load_meta_teams(),
+                    req.get("econ") or {}, gameplan.load_knowledge(),
+                    gemini_text, key)
+                return self._send(200, result)
             except ValueError as e:
                 return self._send(400, {"error": str(e)})
             except Exception as e:  # noqa: BLE001
