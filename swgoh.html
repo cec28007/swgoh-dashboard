@@ -622,7 +622,36 @@
     if (lst) out["Lightspeed Tokens (tier/scope xqty, expiry)"] = lst;
     return out;
   }
-  $("#invBtn").addEventListener("click", () => { $("#invModal").style.display = "grid"; });
+  // --- Server-side inventory sync (cross-device source of truth on the box) ---
+  async function pullInventory() {
+    try {
+      const r = await fetch("/api/inventory");
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d && d.currencies && Object.keys(d.currencies).length) {
+        localStorage.setItem("swgohTokens", JSON.stringify(d.currencies));
+        for (const [k] of CURRENCIES) {
+          const el = $("#inv-" + k);
+          if (el) el.value = (d.currencies[k] != null ? d.currencies[k] : "");
+        }
+      }
+      if (d && Array.isArray(d.lst)) {
+        lstItems = d.lst; localStorage.setItem("swgohLST", JSON.stringify(lstItems)); renderLst();
+      }
+    } catch (e) { /* offline — keep the local cache */ }
+  }
+  async function pushInventory() {
+    let cur = {};
+    try { cur = JSON.parse(localStorage.getItem("swgohTokens") || "{}"); } catch (e) { /* */ }
+    try {
+      await fetch("/api/inventory", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currencies: cur, lst: lstItems }),
+      });
+    } catch (e) { /* offline — saved locally, will re-sync next Save */ }
+  }
+  pullInventory();  // sync from the box on load so the coach has your latest wallet
+  $("#invBtn").addEventListener("click", () => { $("#invModal").style.display = "grid"; pullInventory(); });
 
   // --- Read inventory from screenshot(s): vision -> fill fields + LSTs ---
   function invFileToImage(f) {
@@ -672,7 +701,7 @@
     if (imgs.length) { e.preventDefault(); readInventoryImages(imgs); }
   });
   $("#invForm").addEventListener("submit", (e) => {
-    e.preventDefault(); readTokens(); $("#invModal").style.display = "none";
+    e.preventDefault(); readTokens(); pushInventory(); $("#invModal").style.display = "none";
   });
 
   // --- Economy inputs (optional; the API can't see these) ---

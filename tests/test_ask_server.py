@@ -236,3 +236,27 @@ class TestInventoryRead(unittest.TestCase):
     def test_parse_rejects_no_json(self):
         with self.assertRaises(ValueError):
             ask_server.parse_inventory_reply("no json here")
+
+
+class TestInventoryStore(unittest.TestCase):
+    def test_save_then_load_roundtrips(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "inventory.json")
+            saved = ask_server.save_inventory(
+                {"currencies": {"credits": "126196202"}, "lst": [{"tier": "Kyber"}]}, p)
+            self.assertEqual(saved["currencies"]["credits"], "126196202")
+            got = ask_server.load_inventory(p)
+            self.assertEqual(got["currencies"]["credits"], "126196202")
+            self.assertEqual(got["lst"][0]["tier"], "Kyber")
+
+    def test_load_missing_returns_empty(self):
+        got = ask_server.load_inventory("/nonexistent/inventory.json")
+        self.assertEqual(got, {"currencies": {}, "lst": []})
+
+    def test_save_coerces_missing_keys(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "inv.json")
+            out = ask_server.save_inventory({}, p)
+            self.assertEqual(out, {"currencies": {}, "lst": []})

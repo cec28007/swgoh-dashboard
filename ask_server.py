@@ -285,6 +285,27 @@ def parse_inventory_reply(text):
             "unmapped": d.get("unmapped") or []}
 
 
+INVENTORY_PATH = os.path.join(HERE, "inventory.json")
+
+
+def load_inventory(path=INVENTORY_PATH):
+    """Server-side inventory (currencies + Lightspeed Tokens) — the cross-device
+    source of truth so phone and browser stay in sync. Empty if never saved."""
+    try:
+        with open(path) as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return {"currencies": {}, "lst": []}
+    return {"currencies": d.get("currencies") or {}, "lst": d.get("lst") or []}
+
+
+def save_inventory(data, path=INVENTORY_PATH):
+    out = {"currencies": data.get("currencies") or {}, "lst": data.get("lst") or []}
+    with open(path, "w") as f:
+        json.dump(out, f, indent=2)
+    return out
+
+
 def summarize_video(url):
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
@@ -481,6 +502,14 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:  # noqa: BLE001
                 return self._send(500, {"error": str(e)})
 
+        if route == "/api/inventory":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            try:
+                return self._send(200, save_inventory(self._read_json()))
+            except Exception as e:  # noqa: BLE001
+                return self._send(500, {"error": str(e)})
+
         if route == "/api/storecheck":
             if not authed(self.headers):
                 return self._send(401, {"error": "locked"})
@@ -524,6 +553,10 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(404, {"error": "not found"})
 
     def do_GET(self):
+        if self.path.rstrip("/") == "/api/inventory":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            return self._send(200, load_inventory())
         # The dashboard page is gated behind the PIN; static data is not.
         if self.path in ("/", "/swgoh.html"):
             if not authed(self.headers):
