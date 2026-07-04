@@ -44,6 +44,8 @@ META_QUERIES = [
     ("tips", "SWGOH efficiency tips tricks to accelerate progression f2p 2026", None),
     ("strategy", "SWGOH progression strategy energy crystal efficiency farming "
      "priority roadmap what to focus on mid game", None),
+    ("mechanics", "SWGOH Era system Coliseum Era Levels Episode Track how it works "
+     "2026 game mechanics guide", None),
     ("community", "SWGOH best tips to progress faster and avoid mistakes",
      ["reddit.com", "gaming-fans.com"]),
 ]
@@ -166,10 +168,14 @@ def build_synthesis_prompt(goals, knowledge, gathered):
         "progression_strategy from [strategy]/[community] research as DURABLE, "
         "high-level 'how to progress efficiently' guidance (energy/crystal spend, "
         "farming priority, account-stage direction) — keep existing entries and add "
-        "distinct ones; prefer authoritative sources.\n\n"
+        "distinct ones; prefer authoritative sources. Maintain game_mechanics from "
+        "[mechanics]/[strategy] research as durable explanations of how the game's "
+        "systems work (classic gear/relic vs the ERA/Coliseum/Episode track and how "
+        "they interconnect) — keep existing entries and add distinct ones.\n\n"
         "Reply with ONLY JSON, no prose:\n"
         '{"goals": [<same shape as CURRENT GOALS galactic_legends>], '
-        '"knowledge": {"progression_strategy":[...], "acceleration_tips":[...], '
+        '"knowledge": {"progression_strategy":[...], "game_mechanics":[...], '
+        '"acceleration_tips":[...], '
         '"farming_priorities":[...], "gear_relic_guidance":[...], "whats_meta":[...], '
         '"sources":[...]}, '
         '"changes": ["<one short human sentence per change>"]}\n\n'

@@ -34,6 +34,7 @@ def _knowledge_block(knowledge):
         return ""
     sections = [
         ("progression_strategy", "How to progress efficiently (authoritative community guidance)"),
+        ("game_mechanics", "How the game's systems work (classic gear/relic + the ERA/Coliseum track)"),
         ("acceleration_tips", "High-value acceleration tips (actionable)"),
         ("farming_priorities", "Farming priorities"),
         ("gear_relic_guidance", "Gear/relic guidance"),
