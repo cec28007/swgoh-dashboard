@@ -142,6 +142,18 @@ class TestSummarizeVideo(unittest.TestCase):
         self.assertEqual(out, "• tip one")
 
 
+class TestBuildStorePayload(unittest.TestCase):
+    def test_images_then_prompt(self):
+        imgs = [{"media_type": "image/png", "data": "AA"},
+                {"media_type": "image/jpeg", "data": "BB"}]
+        p = ask_server.build_store_payload(imgs, "PROMPT")
+        parts = p["contents"][0]["parts"]
+        self.assertEqual(len(parts), 3)                      # 2 images + prompt
+        self.assertEqual(parts[0]["inline_data"]["data"], "AA")
+        self.assertEqual(parts[1]["inline_data"]["mime_type"], "image/jpeg")
+        self.assertEqual(parts[-1]["text"], "PROMPT")
+
+
 class TestAuth(unittest.TestCase):
     def test_pin_ok(self):
         with mock.patch.object(ask_server, "APP_PIN", "1234"):

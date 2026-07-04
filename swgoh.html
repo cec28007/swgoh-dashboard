@@ -75,7 +75,11 @@
   .plan .tokens input { width:130px; }
   .plan .row { display:flex; gap:8px; margin-top:6px; }
   .planout { white-space:pre-wrap; margin-top:12px; padding:12px; background:var(--bg);
-        border:1px solid var(--line); border-radius:8px; font-size:14px; display:none; }
+        border:1px solid var(--line); border-radius:8px; font-size:14px; display:none;
+        overflow-x:auto; }
+  table.sc { border-collapse:collapse; width:100%; font-size:12px; white-space:normal; }
+  table.sc th, table.sc td { border:1px solid var(--line); padding:5px 7px; text-align:left; vertical-align:top; }
+  table.sc th { color:var(--muted); }
 </style>
 </head>
 <body>
@@ -102,6 +106,24 @@
       <span class="muted" id="planStatus" style="align-self:center"></span>
     </div>
     <div class="planout" id="planOut"></div>
+  </div>
+  <div class="plan" id="store">
+    <h2>🛒 Store Check</h2>
+    <div class="muted" style="font-size:12px;margin-bottom:2px">
+      Screenshot your store — scroll and snap each part, attach several — and I'll rate each item for your account (uses the token balances above).
+    </div>
+    <div class="attachRow">
+      <label class="attachBtn">📎 Add store screenshot
+        <input id="storeFile" type="file" accept="image/*" multiple hidden />
+      </label>
+      <span class="muted" id="storeCount" style="font-size:12px"></span>
+    </div>
+    <div id="storeThumbs" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+    <div class="row">
+      <button id="storeBtn">Check the store</button>
+      <span class="muted" id="storeStatus" style="align-self:center"></span>
+    </div>
+    <div class="planout" id="storeOut"></div>
   </div>
   <div class="digest" id="digest" style="display:none"></div>
   <div class="kpis" id="kpis"></div>
@@ -397,6 +419,80 @@
     } catch (e) {
       st.textContent = ""; out.style.display = "block";
       out.textContent = "Couldn't build a plan: " + e.message;
+    }
+    btn.disabled = false;
+  });
+
+  // --- Store Check: several store screenshots -> per-item "worth it" table ---
+  const storeImages = [];
+  function renderStoreThumbs() {
+    $("#storeCount").textContent = storeImages.length ? storeImages.length + " screenshot(s)" : "";
+    $("#storeThumbs").innerHTML = storeImages.map((im, i) =>
+      `<span class="preview" style="margin-top:0">
+         <img src="${im.preview}" style="max-height:70px" alt="store" />
+         <button class="rmStore" data-i="${i}" title="Remove" type="button">×</button>
+       </span>`).join("");
+  }
+  function addStoreFile(f) {
+    if (!f || !f.type.startsWith("image/")) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      const u = rd.result;
+      storeImages.push({ media_type: f.type, data: u.slice(u.indexOf(",") + 1), preview: u });
+      renderStoreThumbs();
+    };
+    rd.readAsDataURL(f);
+  }
+  $("#storeFile").addEventListener("change", e => {
+    [...e.target.files].forEach(addStoreFile);
+    e.target.value = "";
+  });
+  $("#storeThumbs").addEventListener("click", e => {
+    const b = e.target.closest(".rmStore");
+    if (!b) return;
+    storeImages.splice(+b.dataset.i, 1);
+    renderStoreThumbs();
+  });
+  function renderTable(md) {
+    let html = "", rows = [];
+    const flush = () => {
+      if (!rows.length) return;
+      html += "<table class='sc'>" + rows.map((r, i) => {
+        const tag = i === 0 ? "th" : "td";
+        return "<tr>" + r.map(c => `<${tag}>${esc(c)}</${tag}>`).join("") + "</tr>";
+      }).join("") + "</table>";
+      rows = [];
+    };
+    for (const ln of md.split("\n")) {
+      if (ln.trim().startsWith("|")) {
+        const cells = ln.split("|").slice(1, -1).map(c => c.trim());
+        if (cells.every(c => /^:?-+:?$/.test(c))) continue;  // separator row
+        rows.push(cells);
+      } else {
+        flush();
+        if (ln.trim()) html += `<div>${esc(ln)}</div>`;
+      }
+    }
+    flush();
+    return html || esc(md);
+  }
+  $("#storeBtn").addEventListener("click", async () => {
+    const st = $("#storeStatus"), out = $("#storeOut"), btn = $("#storeBtn");
+    if (!storeImages.length) { st.textContent = "Add a screenshot first."; return; }
+    st.textContent = "Reading the store…"; out.style.display = "none"; btn.disabled = true;
+    try {
+      const images = storeImages.map(({ media_type, data }) => ({ media_type, data }));
+      const r = await fetch("/api/storecheck", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images, tokens: readTokens() }),
+      });
+      if (r.status === 401) { st.textContent = ""; btn.disabled = false; showPin(); return; }
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+      out.innerHTML = renderTable(j.result); out.style.display = "block"; st.textContent = "";
+    } catch (e) {
+      st.textContent = ""; out.style.display = "block";
+      out.textContent = "Couldn't check the store: " + e.message;
     }
     btn.disabled = false;
   });

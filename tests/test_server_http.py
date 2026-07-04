@@ -70,6 +70,27 @@ class TestHTTP(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertEqual(body["summary"], "• summary")
 
+    def test_storecheck_gated_then_works(self):
+        code, _, _ = self._post("/api/storecheck", {"images": []})
+        self.assertEqual(code, 401)  # locked
+        _, _, hdrs = self._post("/api/login", {"pin": "1234"})
+        cookie = hdrs["Set-Cookie"].split(";")[0]
+        # no images -> 400
+        with mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "x"}):
+            code, _, _ = self._post("/api/storecheck", {"images": []}, cookie=cookie)
+        self.assertEqual(code, 400)
+        # with an image -> 200 (faked Gemini)
+        import base64
+        img = {"media_type": "image/png", "data": base64.b64encode(b"x").decode()}
+        with mock.patch.object(ask_server, "post_to_gemini",
+                               lambda p, k: {"candidates": [{"content": {"parts": [
+                                   {"text": "| Item | Cost |"}]}}]}), \
+                mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "x"}):
+            code, body, _ = self._post(
+                "/api/storecheck", {"images": [img], "tokens": {}}, cookie=cookie)
+        self.assertEqual(code, 200)
+        self.assertIn("Item", body["result"])
+
     def test_gameplan_gated_then_works(self):
         code, _, _ = self._post("/api/gameplan", {"tokens": {}})
         self.assertEqual(code, 401)  # locked without cookie

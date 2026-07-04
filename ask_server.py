@@ -202,6 +202,15 @@ def build_summary_payload(url):
     }
 
 
+def build_store_payload(images, prompt):
+    """Gemini payload: N store screenshots (inline_data) followed by the prompt."""
+    parts = [{"inline_data": {"mime_type": im["media_type"], "data": im["data"]}}
+             for im in images]
+    parts.append({"text": prompt})
+    return {"contents": [{"role": "user", "parts": parts}],
+            "generationConfig": {"maxOutputTokens": 6144}}
+
+
 def summarize_video(url):
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
@@ -330,6 +339,35 @@ class Handler(BaseHTTPRequestHandler):
                     roster, gameplan.load_goals(), req.get("tokens") or {},
                     digest_titles(), gemini_text, key)
                 return self._send(200, {"plan": plan})
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            except Exception as e:  # noqa: BLE001
+                return self._send(500, {"error": str(e)})
+
+        if route == "/api/storecheck":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            try:
+                req = self._read_json()
+                images = req.get("images") or []
+                if not images:
+                    raise ValueError("Attach at least one store screenshot.")
+                for im in images:
+                    validate_image(im)
+                key = os.environ.get("GEMINI_API_KEY")
+                if not key:
+                    raise RuntimeError("GEMINI_API_KEY is not set in the server environment")
+                roster = _load_assign_json(os.path.join(HERE, "swgoh_data.js"))
+                priorities = gameplan.priorities_text(
+                    roster, gameplan.load_goals(), req.get("tokens") or {})
+                payload = build_store_payload(images, gameplan.store_prompt(priorities))
+                out = post_to_gemini(payload, key)
+                c = out.get("candidates", [])
+                if not c:
+                    raise RuntimeError(out.get("error", {}).get("message", "No response."))
+                text = "".join(p.get("text", "")
+                               for p in c[0].get("content", {}).get("parts", []))
+                return self._send(200, {"result": text})
             except ValueError as e:
                 return self._send(400, {"error": str(e)})
             except Exception as e:  # noqa: BLE001

@@ -75,6 +75,23 @@ class TestGeneratePlan(unittest.TestCase):
         self.assertEqual(out, "1. Do this.")
 
 
+class TestPrioritiesAndStorePrompt(unittest.TestCase):
+    def test_priorities_text(self):
+        roster = {"name": "Jaxen", "galactic_power": 7000000, "units": [
+            _u("GLLEIA", "Leia", relic=10),          # owned GL
+            _u("REYJEDITRAINING", "Rey JT", relic=7),  # progresses GLREY
+        ]}
+        t = gameplan.priorities_text(roster, GOALS, {"Crystals": "5000"})
+        self.assertIn("Jaxen", t)
+        self.assertIn("Supreme Leader Kylo Ren", t)   # closest unstarted GL (test data)
+        self.assertIn("Crystals", t)
+
+    def test_store_prompt_includes_priorities_and_verdict(self):
+        p = gameplan.store_prompt("MY PRIORITIES HERE")
+        self.assertIn("MY PRIORITIES HERE", p)
+        self.assertIn("Verdict", p)
+
+
 class TestRealGoalsFile(unittest.TestCase):
     def test_loads_and_is_sane(self):
         goals = gameplan.load_goals()

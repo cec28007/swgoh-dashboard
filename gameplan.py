@@ -83,6 +83,51 @@ def build_plan_prompt(roster_summary, readiness, tokens, meta_titles):
     )
 
 
+def priorities_text(roster, goals, tokens):
+    """A compact summary of the player's progression priorities (for store advice)."""
+    units = roster.get("units", [])
+    readiness = gl_readiness(units, goals)
+    owned = [g["name"] for g in readiness if g["unlocked"]]
+    unstarted = [g for g in readiness if not g["unlocked"]]
+    lines = [f"Player {roster.get('name')}, GP {roster.get('galactic_power')}."]
+    if owned:
+        lines.append("Owned Galactic Legends: " + ", ".join(owned) + ".")
+    if unstarted:
+        g = unstarted[0]
+        gap = []
+        if g["missing"]:
+            gap.append("missing " + ", ".join(g["missing"]))
+        if g["under_relic"]:
+            gap.append("under-relic " + ", ".join(
+                f"{u['name']} R{u['have']}<R{u['need']}" for u in g["under_relic"]))
+        lines.append(f"Closest next GL: {g['name']} — "
+                     + ("; ".join(gap) if gap else "prereqs nearly done") + ".")
+        nxt = [x["name"] for x in unstarted[1:3]]
+        if nxt:
+            lines.append("After that: " + ", ".join(nxt) + ".")
+    tok = {k: v for k, v in (tokens or {}).items() if str(v).strip()}
+    if tok:
+        lines.append("Current token balances: " + json.dumps(tok) + ".")
+    chars = sorted([u for u in units if u.get("type") == "character"],
+                   key=lambda x: x.get("power") or 0, reverse=True)
+    lines.append("Top units: "
+                 + ", ".join(u.get("name", u["base_id"]) for u in chars[:20]) + ".")
+    return " ".join(lines)
+
+
+def store_prompt(priorities):
+    return (
+        "You are a Star Wars: Galaxy of Heroes store advisor. The attached "
+        "screenshot(s) show an in-game store or offers. Read EVERY item you can see "
+        "across all images. For each item, output one markdown table row with columns: "
+        "Item | Cost | Verdict | Why. Verdict is Buy, Maybe, or Skip. 'Why' is one short "
+        "sentence tied to the player's priorities below (e.g. a unlock prereq they still "
+        "need, a bottleneck material, already-maxed unit, or better use of the currency). "
+        "Start with the table header row. Be specific to THIS player.\n\n"
+        f"PLAYER PRIORITIES:\n{priorities}"
+    )
+
+
 def generate_plan(roster, goals, tokens, meta_titles, gemini_call, key):
     units = roster.get("units", [])
     chars = sorted([u for u in units if u.get("type") == "character"],
