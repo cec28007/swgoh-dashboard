@@ -178,6 +178,7 @@
       <button id="planBtn">Assess my account</button>
       <button id="invBtn" class="attachBtn" type="button">💰 Inventory</button>
       <button id="econBtn" class="attachBtn" type="button">📊 Economy</button>
+      <button id="deepBtn" class="attachBtn" type="button">🧠 Deep Dive</button>
       <span class="muted" id="planStatus" style="align-self:center"></span>
     </div>
     <div id="scoreCard" style="display:none"></div>
@@ -265,6 +266,22 @@
     <div class="muted" style="font-size:12px;margin-bottom:2px">The game's API can't see these — fill in what you know and the coach sharpens its crystal-ROI advice. Blank is fine. Saved on this device.</div>
     <div class="invGrid" id="econGrid"></div>
     <button type="submit">Save</button>
+  </form>
+</div>
+
+<div class="modal" id="deepModal" style="display:none">
+  <form class="modalCard" id="deepForm" style="width:min(680px,94vw)">
+    <strong>🧠 Deep Dive with Claude</strong>
+    <div class="muted" style="font-size:12px;margin-bottom:2px">Packages your current account state into a brief. Copy it, paste into a Claude conversation, and Claude comes up to speed for deep, on-demand coaching. Free — no AI call happens here.</div>
+    <label style="font-size:12px;display:flex;flex-direction:column;gap:3px">Your question (optional)
+      <textarea id="deepQ" rows="2" placeholder="e.g. Should I focus my next GL or build a second fleet?"></textarea>
+    </label>
+    <div class="row">
+      <button type="submit">Generate brief</button>
+      <button type="button" id="deepCopy" style="display:none">📋 Copy</button>
+      <span class="muted" id="deepStatus" style="align-self:center"></span>
+    </div>
+    <textarea id="deepOut" readonly rows="14" style="display:none;width:100%;font-family:ui-monospace,monospace;font-size:12px"></textarea>
   </form>
 </div>
 
@@ -531,6 +548,30 @@
   $("#econBtn").addEventListener("click", () => { $("#econModal").style.display = "grid"; });
   $("#econForm").addEventListener("submit", (e) => {
     e.preventDefault(); readEcon(); $("#econModal").style.display = "none";
+  });
+
+  // --- Deep Dive: package current state into a brief to paste into Claude ---
+  $("#deepBtn").addEventListener("click", () => { $("#deepModal").style.display = "grid"; });
+  $("#deepForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const st = $("#deepStatus"), out = $("#deepOut"), copy = $("#deepCopy");
+    st.textContent = "Building brief…";
+    try {
+      const r = await fetch("/api/deepdive", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: $("#deepQ").value, econ: readEcon() }),
+      });
+      if (r.status === 401) { st.textContent = ""; $("#deepModal").style.display = "none"; showPin(); return; }
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+      out.value = j.brief; out.style.display = "block"; copy.style.display = "inline-block";
+      try { await navigator.clipboard.writeText(j.brief); st.textContent = "Copied to clipboard ✓ — paste into Claude"; }
+      catch (_) { st.textContent = "Select all in the box below and copy"; }
+    } catch (e) { st.textContent = "Error: " + e.message; }
+  });
+  $("#deepCopy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("#deepOut").value); $("#deepStatus").textContent = "Copied ✓"; }
+    catch (_) { $("#deepOut").select(); }
   });
 
   // --- Health scorecard render ---

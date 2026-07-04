@@ -101,6 +101,21 @@ class TestAssembleAndPrompt(unittest.TestCase):
             self.assertIn("score", h["domains"][d])
         self.assertIn("overall", h)
 
+    def test_deep_dive_brief_has_state_and_question(self):
+        goals = [{"id": "GLLEIA", "name": "Leia", "requirements": []}]
+        units = [_u("GLLEIA", power=99999)]
+        know = {"progression_strategy": [{"text": "refresh energy 3x daily", "source": "s"}],
+                "game_mechanics": [{"text": "Coliseum is a daily Era mode", "source": "s"}]}
+        b = gh.build_deep_dive_brief(
+            {"units": units, "name": "Jaxen", "galactic_power": 7000000},
+            goals, META, know, question="Should I focus GLs or fleet?")
+        self.assertIn("Jaxen", b)
+        self.assertIn("Health scorecard", b)           # computed state
+        self.assertIn("refresh energy 3x daily", b)    # strategy knowledge
+        self.assertIn("Coliseum", b)                   # mechanics knowledge
+        self.assertIn("Should I focus GLs or fleet?", b)  # the question
+        self.assertIn("progression coach", b.lower())  # primes Claude
+
     def test_prompt_includes_econ_inputs_and_focus_ask(self):
         h = {"domains": {"fleet": {"score": 40, "state": "weak"}}, "overall": 55}
         opps = [{"domain": "fleet", "roi": 60, "why": "unsynergized"}]

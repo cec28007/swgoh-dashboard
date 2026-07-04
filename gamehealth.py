@@ -177,6 +177,71 @@ def build_health_prompt(roster, health, opps, econ, knowledge):
     )
 
 
+def build_deep_dive_brief(roster, goals, meta_teams, knowledge, econ=None, question=""):
+    """A complete, copy-pasteable account brief to hand Claude for an on-demand
+    deep dive — everything computed here so Claude comes up to speed in one shot,
+    no model call and no rate limit."""
+    units = roster.get("units", [])
+    health = assess_health(roster, goals, meta_teams, econ)
+    opps = rank_opportunities(health)
+    readiness = gameplan.gl_readiness(units, goals)
+    chars = sorted([u for u in units if u.get("type") == "character"],
+                   key=lambda x: x.get("power") or 0, reverse=True)
+    ships = sorted([u for u in units if u.get("type") == "ship"],
+                   key=lambda x: x.get("power") or 0, reverse=True)
+    L = [f"# SWGOH Deep-Dive Brief — {roster.get('name')} (GP {roster.get('galactic_power')})", "",
+         ("You are my SWGOH progression coach. Below is my current account state, "
+          "computed from my live roster, plus the strategy knowledge my app uses. "
+          "Come up to speed, then answer my question with deep, specific, "
+          "roster-grounded reasoning."), "",
+         f"## Health scorecard (overall {health['overall']}/100)"]
+    for d, v in health["domains"].items():
+        L.append(f"- {DOMAIN_LABELS[d]}: {v['score']}/100 — {v.get('state', '')}")
+    L += ["", "## Biggest levers (ROI-ranked)"]
+    L += [f"- {o['label']} (ROI {o['roi']}): {o['why']}" for o in opps]
+
+    L += ["", "## Galactic Legends"]
+    owned = [g for g in readiness if g["unlocked"]]
+    L.append("Owned: " + (", ".join(g["name"] for g in owned) or "none"))
+    for g in readiness:
+        if g["unlocked"]:
+            continue
+        bits = [f"{g['met']}/{g['total']} reqs met"]
+        if g["missing"]:
+            bits.append("don't own: " + ", ".join(g["missing"]))
+        if g["under_relic"]:
+            bits.append("below target: " + ", ".join(
+                (f"{u['name']} {u.get('stars', 0)}★→7★"
+                 if "stars" in u.get("reason", []) else f"{u['name']} R{u['have']}→R{u['need']}")
+                for u in g["under_relic"]))
+        L.append(f"- {g['name']}: " + "; ".join(bits))
+
+    L += ["", "## Top characters"]
+    L += [f"- {u.get('name', u['base_id'])}: {u.get('stars')}★ R{u.get('relic')} "
+          f"G{u.get('gear_level')} spd {u.get('speed')}" for u in chars[:20]]
+    fl = health["domains"]["fleet"]
+    L += ["", "## Fleet", f"Strongest: {fl.get('best_fleet')} | capitals owned: {fl.get('capitals_owned')}",
+          "Top ships: " + ", ".join(f"{u.get('name', u['base_id'])} {u.get('stars')}★"
+                                    for u in ships[:10])]
+    gd = health["domains"]["gac_depth"]
+    L += ["", "## GAC / squad depth",
+          f"Fieldable meta teams ({len(gd.get('fieldable', []))}): "
+          + ", ".join(gd.get('fieldable', []))]
+
+    L += ["", "## Strategy & mechanics knowledge my app uses"]
+    for key, label in [("progression_strategy", "Progression strategy"),
+                       ("game_mechanics", "Game mechanics (classic + ERA/Coliseum)")]:
+        items = [i.get("text") for i in (knowledge or {}).get(key, []) if i.get("text")]
+        if items:
+            L.append(f"### {label}")
+            L += [f"- {t}" for t in items]
+    econ = {k: v for k, v in (econ or {}).items() if str(v).strip()}
+    if econ:
+        L += ["", "## My economy inputs", json.dumps(econ)]
+    L += ["", "## My question", question.strip() or "(type your question here)"]
+    return "\n".join(L)
+
+
 def generate_health(roster, goals, meta_teams, econ, knowledge, gemini_call, key):
     health = assess_health(roster, goals, meta_teams, econ)
     opps = rank_opportunities(health)

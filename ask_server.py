@@ -406,6 +406,20 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:  # noqa: BLE001
                 return self._send(500, {"error": str(e)})
 
+        if route == "/api/deepdive":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            try:
+                req = self._read_json()
+                roster = _load_assign_json(os.path.join(HERE, "swgoh_data.js"))
+                brief = gamehealth.build_deep_dive_brief(
+                    roster, gameplan.load_goals(), gamehealth.load_meta_teams(),
+                    gameplan.load_knowledge(), req.get("econ") or {},
+                    req.get("question") or "")
+                return self._send(200, {"brief": brief})
+            except Exception as e:  # noqa: BLE001
+                return self._send(500, {"error": str(e)})
+
         if route == "/api/storecheck":
             if not authed(self.headers):
                 return self._send(401, {"error": "locked"})
