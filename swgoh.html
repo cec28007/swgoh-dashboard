@@ -91,6 +91,18 @@
   .planout { white-space:pre-wrap; margin-top:12px; padding:12px; background:var(--bg);
         border:1px solid var(--line); border-radius:8px; font-size:14px; display:none;
         max-height:60vh; overflow:auto; }
+  #scoreCard { margin-top:12px; padding:12px; background:var(--bg);
+        border:1px solid var(--line); border-radius:8px; }
+  #scoreCard .ovr { font-size:15px; margin-bottom:6px; }
+  .scoreRow { display:flex; align-items:center; gap:8px; margin-top:8px; }
+  .scoreRow .sLab { flex:0 0 132px; font-size:13px; }
+  .scoreRow .bar { flex:1; height:10px; background:var(--line); border-radius:5px; overflow:hidden; }
+  .scoreRow .barfill { display:block; height:100%; }
+  .scoreRow .sNum { flex:0 0 40px; text-align:right; font-size:13px; font-variant-numeric:tabular-nums; }
+  #scoreCard .sState { font-size:11px; color:var(--muted); margin:1px 0 0 140px; }
+  #scoreCard .lev { margin-top:12px; }
+  #scoreCard .lev ol { margin:4px 0 0; padding-left:20px; font-size:13px; }
+  @media (max-width:640px){ .scoreRow .sLab { flex-basis:100px; } #scoreCard .sState { margin-left:108px; } }
   table.sc { border-collapse:collapse; width:100%; font-size:12px; white-space:normal; }
   table.sc th, table.sc td { border:1px solid var(--line); padding:5px 7px; text-align:left; vertical-align:top; }
   table.sc th { color:var(--muted); }
@@ -160,13 +172,15 @@
   <div class="plan" id="plan">
     <h2>🧭 Game Plan</h2>
     <div class="muted" style="font-size:12px;margin-bottom:2px">
-      A prioritized roadmap from your roster — fastest Galactic Legend path, key gear/relic moves, and farming focus. Add your currencies (💰 Inventory) for spend tips.
+      A top-down health read of your whole account — where you're strong, your biggest gaps, and the highest-ROI focus for this week and today. Grounded in your real roster + current community strategy. Add 💰 Inventory and 📊 Economy for sharper crystal advice.
     </div>
     <div class="row">
-      <button id="planBtn">Generate my plan</button>
+      <button id="planBtn">Assess my account</button>
       <button id="invBtn" class="attachBtn" type="button">💰 Inventory</button>
+      <button id="econBtn" class="attachBtn" type="button">📊 Economy</button>
       <span class="muted" id="planStatus" style="align-self:center"></span>
     </div>
+    <div id="scoreCard" style="display:none"></div>
     <div class="planout" id="planOut"></div>
   </div>
   <div class="plan" id="store">
@@ -241,6 +255,15 @@
     <strong>💰 Inventory / Currencies</strong>
     <div class="muted" style="font-size:12px;margin-bottom:2px">Optional — fill in what you want. The coach uses these for spend advice. Saved on this device.</div>
     <div class="invGrid" id="invGrid"></div>
+    <button type="submit">Save</button>
+  </form>
+</div>
+
+<div class="modal" id="econModal" style="display:none">
+  <form class="modalCard" id="econForm" style="width:min(480px,92vw)">
+    <strong>📊 Economy (optional)</strong>
+    <div class="muted" style="font-size:12px;margin-bottom:2px">The game's API can't see these — fill in what you know and the coach sharpens its crystal-ROI advice. Blank is fine. Saved on this device.</div>
+    <div class="invGrid" id="econGrid"></div>
     <button type="submit">Save</button>
   </form>
 </div>
@@ -480,24 +503,76 @@
     e.preventDefault(); readTokens(); $("#invModal").style.display = "none";
   });
 
-  // --- Game Plan: roster + saved currencies -> /api/gameplan (grounded coach) ---
+  // --- Economy inputs (optional; the API can't see these) ---
+  const ECON = [
+    ["squad_arena_rank", "Squad Arena rank"], ["fleet_arena_rank", "Fleet Arena rank"],
+    ["gac_league", "GAC league / division"], ["crystals_per_day", "Crystals per day (approx)"],
+    ["conquest_tier", "Conquest tier reached"],
+  ];
+  (function buildEconomy() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem("swgohEcon") || "{}"); } catch (e) { /* */ }
+    $("#econGrid").innerHTML = ECON.map(([k, label]) => {
+      const v = saved[k] != null ? esc(saved[k]) : "";
+      const t = k === "gac_league" ? "text" : "number";
+      return `<label>${label}<input id="econ-${k}" type="${t}" value="${v}" placeholder="—" /></label>`;
+    }).join("");
+  })();
+  function readEcon() {
+    const raw = {}, out = {};
+    for (const [k, label] of ECON) {
+      const el = $("#econ-" + k), v = el ? el.value.trim() : "";
+      raw[k] = v;
+      if (v) out[label] = v;
+    }
+    localStorage.setItem("swgohEcon", JSON.stringify(raw));
+    return out;
+  }
+  $("#econBtn").addEventListener("click", () => { $("#econModal").style.display = "grid"; });
+  $("#econForm").addEventListener("submit", (e) => {
+    e.preventDefault(); readEcon(); $("#econModal").style.display = "none";
+  });
+
+  // --- Health scorecard render ---
+  const DLAB = { galactic_legends: "Galactic Legends", gac_depth: "GAC / squad depth",
+    fleet: "Fleet", roster_depth: "Roster depth" };
+  const DORDER = ["galactic_legends", "gac_depth", "fleet", "roster_depth"];
+  function renderScorecard(h, opps) {
+    if (!h || !h.domains) { $("#scoreCard").style.display = "none"; return; }
+    const rows = DORDER.filter(d => h.domains[d]).map(d => {
+      const v = h.domains[d], s = Math.max(0, Math.min(100, v.score || 0));
+      const col = s >= 75 ? "#3fb950" : s >= 45 ? "#d29922" : "#f85149";
+      return `<div class="scoreRow"><span class="sLab">${DLAB[d] || d}</span>
+        <span class="bar"><span class="barfill" style="width:${s}%;background:${col}"></span></span>
+        <span class="sNum">${s}</span></div>
+        <div class="sState">${esc(v.state || "")}</div>`;
+    }).join("");
+    const levers = (opps || []).slice(0, 3).map(o =>
+      `<li><b>${esc(o.label)}</b> — ${esc(o.why)}</li>`).join("");
+    $("#scoreCard").innerHTML =
+      `<div class="ovr">Account health <b>${esc(h.overall)}/100</b></div>${rows}` +
+      (levers ? `<div class="lev"><div class="muted" style="font-size:12px">Biggest levers (ROI-ranked)</div><ol>${levers}</ol></div>` : "");
+    $("#scoreCard").style.display = "block";
+  }
+
+  // --- Game Plan: real roster -> /api/gamehealth (scorecard + weekly/daily focus) ---
   $("#planBtn").addEventListener("click", async () => {
-    const st = $("#planStatus"), out = $("#planOut"), btn = $("#planBtn");
-    const tokens = readTokens();
-    st.textContent = "Building your plan… (takes a few seconds)";
-    out.style.display = "none"; btn.disabled = true;
+    const st = $("#planStatus"), out = $("#planOut"), sc = $("#scoreCard"), btn = $("#planBtn");
+    st.textContent = "Assessing your account… (takes a few seconds)";
+    out.style.display = "none"; sc.style.display = "none"; btn.disabled = true;
     try {
-      const r = await fetch("/api/gameplan", {
+      const r = await fetch("/api/gamehealth", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tokens }),
+        body: JSON.stringify({ econ: readEcon() }),
       });
       if (r.status === 401) { st.textContent = ""; btn.disabled = false; showPin(); return; }
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
-      out.textContent = j.plan; out.style.display = "block"; st.textContent = "";
+      renderScorecard(j.health, j.opportunities || []);
+      out.textContent = j.plan || ""; out.style.display = "block"; st.textContent = "";
     } catch (e) {
       st.textContent = ""; out.style.display = "block";
-      out.textContent = "Couldn't build a plan: " + e.message;
+      out.textContent = "Couldn't assess your account: " + e.message;
     }
     btn.disabled = false;
   });
