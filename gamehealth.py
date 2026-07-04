@@ -145,6 +145,32 @@ def rank_opportunities(health):
 # --------------------------------------------------------------------------- #
 # Narrative synthesis
 # --------------------------------------------------------------------------- #
+def _meta_lines(roster):
+    """Live account meta auto-pulled from the game API (fetch_swgoh.player_meta):
+    arena ranks, GAC standing, Era progression, datacrons. [] if absent."""
+    m = (roster or {}).get("meta") or {}
+    out = []
+    if m.get("squad_arena_rank") is not None:
+        out.append(f"Squad Arena rank: {m['squad_arena_rank']}")
+    if m.get("fleet_arena_rank") is not None:
+        out.append(f"Fleet Arena rank: {m['fleet_arena_rank']}")
+    if m.get("gac_league"):
+        out.append(f"GAC: {m['gac_league']} division {m.get('gac_division')} "
+                   f"(skill rating {m.get('gac_skill_rating')})")
+    r = m.get("gac_recent") or {}
+    if r.get("rank") is not None:
+        out.append(f"Recent GAC: {r.get('wins')}W-{r.get('losses')}L, "
+                   f"{r.get('points')} pts, rank {r.get('rank')}")
+    if m.get("era_units"):
+        out.append("Era units: " + ", ".join(
+            f"{e['base_id']} EL{e['era_level']}" for e in m["era_units"]))
+    if m.get("loaned_era_level") is not None:
+        out.append(f"Loaned unit Era Level: {m['loaned_era_level']}")
+    if m.get("datacron_count"):
+        out.append(f"Datacrons owned: {m['datacron_count']}")
+    return out
+
+
 def build_health_prompt(roster, health, opps, econ, knowledge):
     dlines = []
     for d, v in health["domains"].items():
@@ -156,6 +182,9 @@ def build_health_prompt(roster, health, opps, econ, knowledge):
                   + json.dumps(econ) + "\n") if econ else \
                  "\n(No economy numbers provided — infer crystal ROI from roster + principles.)\n"
     know_block = gameplan._knowledge_block(knowledge)
+    ml = _meta_lines(roster)
+    meta_block = ("\nLIVE ACCOUNT META (auto-pulled from the game API — arena/GAC/Era):\n- "
+                  + "\n- ".join(ml) + "\n") if ml else ""
     return (
         "You are an elite Star Wars: Galaxy of Heroes account coach. Give a "
         "TOP-DOWN health read and the highest-ROI focus. The scores below are "
@@ -164,8 +193,9 @@ def build_health_prompt(roster, health, opps, econ, knowledge):
         "Legends are the flywheel (they win GAC/TW/arena at once → more crystals → "
         "gear faster → more GLs). Weigh GL investment against cheap gaps that leak "
         "free crystals (e.g. an unsynergized fleet).\n\n"
-        f"PLAYER: {roster.get('name')} — GP {roster.get('galactic_power')}.\n\n"
-        f"HEALTH SCORECARD:\n" + "\n".join(dlines) + "\n\n"
+        f"PLAYER: {roster.get('name')} — GP {roster.get('galactic_power')}.\n"
+        + meta_block +
+        "\nHEALTH SCORECARD:\n" + "\n".join(dlines) + "\n\n"
         f"BIGGEST GAPS (ROI-ranked):\n" + "\n".join(olines) + "\n"
         + econ_block + know_block +
         "\nRespond in three short sections:\n"
@@ -200,6 +230,9 @@ def build_deep_dive_brief(roster, goals, meta_teams, knowledge, econ=None, quest
     L += ["", "## Biggest levers (ROI-ranked)"]
     L += [f"- {o['label']} (ROI {o['roi']}): {o['why']}" for o in opps]
 
+    ml = _meta_lines(roster)
+    if ml:
+        L += ["", "## Live account meta (auto-pulled from the game API)"] + [f"- {x}" for x in ml]
     L += ["", "## Galactic Legends"]
     owned = [g for g in readiness if g["unlocked"]]
     L.append("Owned: " + (", ".join(g["name"] for g in owned) or "none"))

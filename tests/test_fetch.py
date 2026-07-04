@@ -119,3 +119,35 @@ class TestNormalizeComlinkStats(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPlayerMeta(unittest.TestCase):
+    PAYLOAD = {
+        "pvpProfile": [{"tab": 1, "rank": 152}, {"tab": 2, "rank": 88}],
+        "playerRating": {"playerSkillRating": {"skillRating": 2006},
+                         "playerRankStatus": {"leagueId": "CARBONITE", "divisionId": 20}},
+        "seasonStatus": [{"league": "CARBONITE", "wins": 3, "losses": 1,
+                          "seasonPoints": 4565, "division": 15, "rank": 10667}],
+        "eraUnitStatus": [{"unitBaseId": "GOPHERANTS", "eraLevel": 94}],
+        "loanedUnitEraLevel": 90,
+        "datacron": [{"id": "a"}, {"id": "b"}],
+    }
+
+    def test_extracts_arena_gac_era_datacrons(self):
+        import fetch_swgoh
+        m = fetch_swgoh.player_meta(self.PAYLOAD)
+        self.assertEqual(m["squad_arena_rank"], 152)
+        self.assertEqual(m["fleet_arena_rank"], 88)
+        self.assertEqual(m["gac_league"], "CARBONITE")
+        self.assertEqual(m["gac_skill_rating"], 2006)
+        self.assertEqual(m["gac_recent"]["rank"], 10667)
+        self.assertEqual(m["era_units"][0], {"base_id": "GOPHERANTS", "era_level": 94})
+        self.assertEqual(m["loaned_era_level"], 90)
+        self.assertEqual(m["datacron_count"], 2)
+
+    def test_empty_payload_is_safe(self):
+        import fetch_swgoh
+        m = fetch_swgoh.player_meta({})
+        self.assertIsNone(m["squad_arena_rank"])
+        self.assertEqual(m["era_units"], [])
+        self.assertEqual(m["datacron_count"], 0)

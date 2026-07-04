@@ -129,3 +129,24 @@ class TestAssembleAndPrompt(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMetaWiring(unittest.TestCase):
+    ROSTER = {"name": "P", "galactic_power": 7000000, "units": [], "meta": {
+        "squad_arena_rank": 152, "fleet_arena_rank": 88, "gac_league": "CARBONITE",
+        "gac_division": 20, "gac_skill_rating": 2006, "era_units": [{"base_id": "X", "era_level": 94}],
+        "loaned_era_level": 90, "datacron_count": 6}}
+
+    def test_meta_lines_render(self):
+        lines = gh._meta_lines(self.ROSTER)
+        joined = " ".join(lines)
+        self.assertIn("Squad Arena rank: 152", joined)
+        self.assertIn("CARBONITE", joined)
+        self.assertIn("EL94", joined)
+        self.assertIn("Datacrons owned: 6", joined)
+
+    def test_health_prompt_includes_meta(self):
+        h = {"domains": {"fleet": {"score": 40, "state": "x"}}, "overall": 55}
+        p = gh.build_health_prompt(self.ROSTER, h, [{"label": "fleet", "roi": 60, "why": "x"}], {}, {})
+        self.assertIn("Squad Arena rank: 152", p)
+        self.assertIn("LIVE ACCOUNT META", p)

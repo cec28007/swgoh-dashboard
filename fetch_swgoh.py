@@ -147,6 +147,34 @@ def _est_power(stars, gear_level, relic, level, is_ship):
     return stars * 3000 + gear_level * 1500 + relic * 2000 + level * 50
 
 
+def player_meta(payload):
+    """Live account meta the public API DOES expose (unlike the wallet): arena
+    ranks, GAC standing, Era progression, datacrons. Grounds the coach so these
+    aren't manual inputs."""
+    pvp = {p.get("tab"): p.get("rank") for p in (payload.get("pvpProfile") or [])
+           if isinstance(p, dict)}
+    pr = payload.get("playerRating") or {}
+    rank_status = pr.get("playerRankStatus") or {}
+    seasons = payload.get("seasonStatus") or []
+    recent = seasons[0] if seasons else {}
+    dcs = [d for d in (payload.get("datacron") or []) if isinstance(d, dict)]
+    return {
+        "squad_arena_rank": pvp.get(1),
+        "fleet_arena_rank": pvp.get(2),
+        "gac_league": rank_status.get("leagueId"),
+        "gac_division": rank_status.get("divisionId"),
+        "gac_skill_rating": (pr.get("playerSkillRating") or {}).get("skillRating"),
+        "gac_recent": ({"league": recent.get("league"), "wins": recent.get("wins"),
+                        "losses": recent.get("losses"), "points": recent.get("seasonPoints"),
+                        "division": recent.get("division"), "rank": recent.get("rank")}
+                       if recent else {}),
+        "era_units": [{"base_id": e.get("unitBaseId"), "era_level": e.get("eraLevel")}
+                      for e in (payload.get("eraUnitStatus") or []) if isinstance(e, dict)],
+        "loaned_era_level": payload.get("loanedUnitEraLevel"),
+        "datacron_count": len(dcs),
+    }
+
+
 def normalize_comlink(payload, maps=None, stats_map=None):
     """Convert a comlink /player payload into the dashboard roster shape.
 
@@ -218,6 +246,7 @@ def normalize_comlink(payload, maps=None, stats_map=None):
         "ship_gp": ship_gp,
         "last_updated": date.today().isoformat(),
         "source": "comlink",
+        "meta": player_meta(payload),
         "units": units,
     }
 
