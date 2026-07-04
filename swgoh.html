@@ -253,8 +253,11 @@
 
 <div class="modal" id="invModal" style="display:none">
   <form class="modalCard" id="invForm" style="width:min(580px,94vw);max-height:88vh;overflow:auto">
-    <strong>💰 Inventory / Currencies</strong>
-    <div class="muted" style="font-size:12px;margin-bottom:2px">Optional — fill in what you have; the coach uses these for spend advice. Saved on this device.</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <strong>💰 Inventory / Currencies</strong>
+      <button type="button" id="invClose" title="Close without saving" style="background:none;color:inherit;opacity:.6;font-size:22px;padding:0 4px;line-height:1;width:auto;cursor:pointer">×</button>
+    </div>
+    <div class="muted" style="font-size:12px;margin-bottom:2px">Optional — fill in what you have; the coach uses these for spend advice. Close (×, tap outside, or Esc) anytime without changing anything; Save persists across your devices.</div>
     <div class="row" style="margin:4px 0">
       <button type="button" id="invReadBtn" class="attachBtn">📷 Read from screenshot(s)</button>
       <input type="file" id="invFile" accept="image/*" multiple style="display:none" />
@@ -652,6 +655,20 @@
   }
   pullInventory();  // sync from the box on load so the coach has your latest wallet
   $("#invBtn").addEventListener("click", () => { $("#invModal").style.display = "grid"; pullInventory(); });
+  $("#invClose").addEventListener("click", () => { $("#invModal").style.display = "none"; });
+
+  // Any dialog (except the PIN gate): tap the dark backdrop or press Esc to
+  // close without saving anything.
+  document.querySelectorAll(".modal").forEach((m) => {
+    if (m.id === "pinModal") return;
+    m.addEventListener("mousedown", (e) => { if (e.target === m) m.style.display = "none"; });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll(".modal").forEach((m) => {
+      if (m.id !== "pinModal" && m.style.display !== "none") m.style.display = "none";
+    });
+  });
 
   // --- Read inventory from screenshot(s): vision -> fill fields + LSTs ---
   function invFileToImage(f) {
