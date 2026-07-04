@@ -91,6 +91,28 @@
   .invGrid label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:2px; text-align:left; }
   img.port { width:26px; height:26px; border-radius:5px; vertical-align:middle; margin-right:7px;
         border:1px solid var(--line); background:var(--bg); object-fit:cover; }
+
+  /* ---- Phone "app" layout: roster table collapses into cards ---- */
+  @media (max-width: 640px) {
+    .wrap { padding:0 12px 70px; }
+    table#roster thead { display:none; }
+    table#roster, table#roster tbody, table#roster tr, table#roster td { display:block; width:auto; }
+    table#roster { border:none; background:none; overflow:visible; }
+    table#roster tr { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          margin:0 0 10px; padding:10px 12px; }
+    table#roster td { border:none; padding:3px 0; white-space:normal; text-align:right;
+          display:flex; justify-content:space-between; align-items:center; font-size:13px; }
+    table#roster td::before { content:attr(data-label); color:var(--muted); font-size:12px;
+          font-weight:600; text-align:left; margin-right:10px; }
+    table#roster td:first-child { justify-content:flex-start; font-size:16px; font-weight:600;
+          padding-bottom:6px; margin-bottom:4px; border-bottom:1px solid var(--line); }
+    table#roster td:first-child::before { content:none; }
+    img.port { width:34px; height:34px; }
+    .controls { flex-direction:column; }
+    .controls input, .controls select { width:100%; }
+    .invGrid { grid-template-columns:1fr; }
+    .plan .tokens input { width:100%; }
+  }
 </style>
 </head>
 <body>
@@ -312,14 +334,14 @@
     $("#roster tbody").innerHTML = rows.map(u => `
       <tr>
         <td>${u.icon ? `<img class="port" loading="lazy" alt="" onerror="this.style.display='none'" src="https://game-assets.swgoh.gg/textures/${u.icon}.png">` : ""}${u.url ? `<a href="${u.url}" target="_blank" rel="noopener">${u.name}</a>` : u.name}</td>
-        <td><span class="pill">${u.type}</span></td>
-        <td class="num">${u.stars || 0}</td>
-        <td class="num">${u.type === "ship" ? "—" : (u.gear_level || 0)}</td>
-        <td class="num">${u.relic ? "R" + u.relic : "—"}</td>
-        <td class="num">${u.speed != null ? u.speed : "—"}</td>
-        <td class="num">${u.zetas || 0}</td>
-        <td class="num">${u.omicrons || 0}</td>
-        <td class="num">${fmt(u.power)}</td>
+        <td class="num" data-label="Type"><span class="pill">${u.type}</span></td>
+        <td class="num" data-label="Stars">${u.stars || 0}★</td>
+        <td class="num" data-label="Gear">${u.type === "ship" ? "—" : (u.gear_level || 0)}</td>
+        <td class="num" data-label="Relic">${u.relic ? "R" + u.relic : "—"}</td>
+        <td class="num" data-label="Speed">${u.speed != null ? u.speed : "—"}</td>
+        <td class="num" data-label="Zetas">${u.zetas || 0}</td>
+        <td class="num" data-label="Omicrons">${u.omicrons || 0}</td>
+        <td class="num" data-label="Power">${fmt(u.power)}</td>
       </tr>`).join("");
     $("#foot").textContent = `${rows.length} of ${D.units.length} units shown`;
   }
