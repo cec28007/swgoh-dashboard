@@ -21,6 +21,7 @@ import hmac
 import json
 import os
 import re
+import urllib.error
 import urllib.request
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -250,8 +251,15 @@ def post_to_gemini(payload, key):
         "x-goog-api-key": key,
         "content-type": "application/json",
     })
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            raise RuntimeError(
+                "The AI is rate-limited right now (Gemini free-tier limit). "
+                "Give it a minute and try again.")
+        raise
 
 
 def ask_ai(question, roster, image=None):
