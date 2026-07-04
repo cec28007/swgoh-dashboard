@@ -258,11 +258,12 @@
     <div id="invSections"></div>
     <div id="lstBlock" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
       <strong style="font-size:13px">🌠 Lightspeed Tokens</strong>
-      <div class="muted" style="font-size:11px;margin-bottom:4px">Each token is a <b>tier</b> (strength: Aurodium→Kyber) × a <b>faction</b> (who it can upgrade). Add the specific ones you have.</div>
+      <div class="muted" style="font-size:11px;margin-bottom:4px"><b>Tier</b> sets the result (Carbonite 3★ → Kyber 7★/R6); <b>scope</b> sets who's eligible ("Any Character" = any eligible Legacy-era unit — not GLs, Conquest, Journey, or capital ships). Tokens expire ~6 months out. Add the ones you hold + their expiry, and the coach will advise who to spend them on.</div>
       <div class="row" style="flex-wrap:wrap;gap:6px">
         <select id="lstTier" style="font-size:12px"></select>
-        <select id="lstFac" style="font-size:12px"></select>
-        <input id="lstQty" type="number" inputmode="numeric" placeholder="qty" style="width:72px" />
+        <select id="lstScope" style="font-size:12px"></select>
+        <input id="lstQty" type="number" inputmode="numeric" placeholder="qty" style="width:60px" />
+        <input id="lstExp" type="date" title="Expires" style="font-size:12px" />
         <button type="button" id="lstAdd">＋ Add</button>
       </div>
       <div id="lstList" style="margin-top:8px;font-size:12px;display:flex;flex-direction:column;gap:4px"></div>
@@ -500,35 +501,49 @@
     }
   });
 
-  // --- Inventory / currencies (modal; used by Game Plan + Store Check) ---
-  // Grouped, with a plain-language "what it's for" under each field.
+  // --- Inventory / currencies (canonical in-game names, 2026) ---
   const INV_SECTIONS = [
     { title: "💎 Core", items: [
-      ["crystals", "Crystals", "Premium currency — best value on energy refreshes"],
-      ["mod", "Mod Store credits", "Buy & slice mods in the mod store"],
+      ["credits", "Credits", "Character upgrades (levels/abilities/stars/gear/mods) + Mod Store"],
+      ["ship_mats", "Ship Building Materials", "Ship upgrades (levels/abilities/stars) + some Mod Store"],
+      ["crystals", "Crystals", "Premium — best value on energy refreshes"],
+      ["ally_points", "Ally Points", "Bronzium Data Cards + Weekly Shipments"],
     ]},
-    { title: "⚡ Energy stores", items: [
-      ["cantina", "Cantina Tokens", "Cantina store — cantina-node characters"],
-      ["shard", "Shard Shop currency", "Trade spare shards for units/gear"],
+    { title: "🏆 Arena stores", items: [
+      ["squad_arena", "Squad Arena Tokens", "Squad Arena store (daily rank)"],
+      ["fleet_arena", "Fleet Arena Tokens", "Fleet Arena store (daily rank)"],
+      ["galactic_war", "Galactic War Tokens", "Galactic War store"],
+      ["championship", "Championship Tokens", "Championship / Grand Arena store (GAC feats)"],
     ]},
-    { title: "🎟 Battle / guild stores", items: [
-      ["squad", "Squad Arena Tokens", "Squad Arena store"],
-      ["fleet", "Fleet Arena Tokens", "Fleet Arena store"],
-      ["gw", "Galactic War Tokens", "Galactic War store"],
-      ["guild", "Guild Tokens", "Guild store"],
-      ["get1", "Guild Event Tokens 1", "Territory Battle / War store"],
-      ["get2", "Guild Event Tokens 2", "Territory War store"],
-      ["get3", "Guild Event Tokens 3", "Higher-tier guild-event store"],
-      ["conquest", "Conquest Tokens", "Conquest store — high-value gear/units"],
+    { title: "⚡ Cantina & Shard", items: [
+      ["cantina", "Cantina Battle Tokens", "Cantina Battles store"],
+      ["shard", "Shard Currency", "Shard Shop"],
     ]},
-    { title: "🌌 Era", items: [
-      ["era", "Era Shipment Tokens", "Era store — Era-relevant units & materials"],
+    { title: "🛡 Guild", items: [
+      ["guild", "Guild Tokens", "Guild store (guild events + daily Guild Activity)"],
+      ["raid1", "Mk I Raid Tokens", "Guild store + Weekly (from Raids)"],
+      ["raid2", "Mk II Raid Tokens", "Guild store + Weekly (from Raids)"],
+      ["raid3", "Mk III Raid Tokens", "Guild store (from Raids)"],
+      ["get1", "Mk I Guild Event Tokens", "Guild Events store (raids/TB/TW)"],
+      ["get2", "Mk II Guild Event Tokens", "Guild Events store (Territory Battles)"],
+      ["get3", "Mk III Guild Event Tokens", "Guild Events store (Territory Battles)"],
+    ]},
+    { title: "🌌 Era / Conquest / Special", items: [
+      ["era_currency", "Era Currency", "Era-exclusive game modes (Coliseum)"],
+      ["episode_currency", "Episode Currency", "Advancing the Episode Track"],
+      ["conquest", "Conquest Credits", "Conquest store + Conquest Merchants"],
+      ["legend_tokens", "Legend Tokens", "Events with your Galactic Legends"],
+      ["datacaches", "Data-caches", "Datacron activities — upgrade/re-roll Datacrons"],
     ]},
   ];
   const CURRENCIES = INV_SECTIONS.flatMap(s => s.items.map(([k, label]) => [k, label]));
-  const LST_TIERS = ["Aurodium", "Bronzium", "Carbonite", "Chromium", "Kyber"];
-  const LST_FACTIONS = ["Separatist", "Mandalorian", "Nightsister", "Bad Batch",
-    "Empire", "Droid", "Gungan", "Legacy Heroes", "Other"];
+  // Lightspeed Tokens: TIER sets the result, SCOPE sets who's eligible, tokens expire.
+  const LST_TIERS = [
+    ["Carbonite", "3★/GearXII"], ["Bronzium", "4★/R1"], ["Chromium", "5★/R3"],
+    ["Aurodium", "6★/R5"], ["Kyber", "7★/R6 (top)"],
+  ];
+  const LST_SCOPES = ["Any Character", "Separatist", "Smuggler", "Mandalorian", "Nightsister",
+    "Bad Batch", "Empire", "Droid", "Gungan", "Legacy Heroes", "Other"];
   let lstItems = [];
   try { lstItems = JSON.parse(localStorage.getItem("swgohLST") || "[]"); } catch (e) { /* */ }
 
@@ -543,9 +558,9 @@
         return `<label>${label}<input id="inv-${k}" type="number" inputmode="numeric" value="${v}" placeholder="—" />
           <span class="muted" style="font-size:10px;font-weight:400">${esc(desc)}</span></label>`;
       }).join("") + `</div></div>`).join("");
-    $("#lstTier").innerHTML = LST_TIERS.map((t, i) =>
-      `<option value="${t}">${t}${i === 4 ? " (strongest)" : i === 0 ? " (weakest)" : ""}</option>`).join("");
-    $("#lstFac").innerHTML = LST_FACTIONS.map(f => `<option value="${f}">${f}</option>`).join("");
+    $("#lstTier").innerHTML = LST_TIERS.map(([t, r]) =>
+      `<option value="${t}">${t} — ${r}</option>`).join("");
+    $("#lstScope").innerHTML = LST_SCOPES.map(f => `<option value="${f}">${f}</option>`).join("");
     renderLst();
   })();
 
@@ -553,7 +568,7 @@
     $("#lstList").innerHTML = lstItems.length
       ? lstItems.map((it, i) =>
         `<span style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px">
-           <span>${esc(it.tier)} ${esc(it.fac)} LST × ${esc(it.qty)}</span>
+           <span>${esc(it.tier)} · ${esc(it.scope)} × ${esc(it.qty)}${it.exp ? ` <span class="muted">(exp ${esc(it.exp)})</span>` : ""}</span>
            <button type="button" class="rmLst" data-i="${i}" title="Remove" style="padding:0 8px">×</button>
          </span>`).join("")
       : `<span class="muted" style="font-size:11px">No Lightspeed Tokens added yet.</span>`;
@@ -561,9 +576,9 @@
   $("#lstAdd").addEventListener("click", () => {
     const qty = $("#lstQty").value.trim();
     if (!qty) return;
-    lstItems.push({ tier: $("#lstTier").value, fac: $("#lstFac").value, qty });
+    lstItems.push({ tier: $("#lstTier").value, scope: $("#lstScope").value, qty, exp: $("#lstExp").value });
     localStorage.setItem("swgohLST", JSON.stringify(lstItems));
-    $("#lstQty").value = ""; renderLst();
+    $("#lstQty").value = ""; $("#lstExp").value = ""; renderLst();
   });
   $("#lstList").addEventListener("click", (e) => {
     const b = e.target.closest(".rmLst");
@@ -573,7 +588,7 @@
     renderLst();
   });
   function lstSummary() {
-    return lstItems.map(it => `${it.tier} ${it.fac} ×${it.qty}`).join(", ");
+    return lstItems.map(it => `${it.tier}/${it.scope} ×${it.qty}${it.exp ? ` (expires ${it.exp})` : ""}`).join(", ");
   }
   function readTokens() {
     const raw = {}, out = {};
@@ -584,7 +599,7 @@
     }
     localStorage.setItem("swgohTokens", JSON.stringify(raw));
     const lst = lstSummary();
-    if (lst) out["Lightspeed Tokens (tier faction ×qty)"] = lst;
+    if (lst) out["Lightspeed Tokens (tier/scope xqty, expiry)"] = lst;
     return out;
   }
   $("#invBtn").addEventListener("click", () => { $("#invModal").style.display = "grid"; });
