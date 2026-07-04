@@ -163,7 +163,7 @@ def _meta_lines(roster):
                    f"{r.get('points')} pts, rank {r.get('rank')}")
     if m.get("era_units"):
         out.append("Era units: " + ", ".join(
-            f"{e['base_id']} EL{e['era_level']}" for e in m["era_units"]))
+            f"{e.get('name', e['base_id'])} EL{e['era_level']}" for e in m["era_units"]))
     if m.get("loaned_era_level") is not None:
         out.append(f"Loaned unit Era Level: {m['loaned_era_level']}")
     if m.get("datacron_count"):

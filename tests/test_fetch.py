@@ -134,14 +134,14 @@ class TestPlayerMeta(unittest.TestCase):
     }
 
     def test_extracts_arena_gac_era_datacrons(self):
-        import fetch_swgoh
-        m = fetch_swgoh.player_meta(self.PAYLOAD)
+        m = fetch_swgoh.player_meta(self.PAYLOAD, {"GOPHERANTS": "Grogu & Anzellans"})
         self.assertEqual(m["squad_arena_rank"], 152)
         self.assertEqual(m["fleet_arena_rank"], 88)
         self.assertEqual(m["gac_league"], "CARBONITE")
         self.assertEqual(m["gac_skill_rating"], 2006)
         self.assertEqual(m["gac_recent"]["rank"], 10667)
-        self.assertEqual(m["era_units"][0], {"base_id": "GOPHERANTS", "era_level": 94})
+        self.assertEqual(m["era_units"][0],
+                         {"base_id": "GOPHERANTS", "name": "Grogu & Anzellans", "era_level": 94})
         self.assertEqual(m["loaned_era_level"], 90)
         self.assertEqual(m["datacron_count"], 2)
 
