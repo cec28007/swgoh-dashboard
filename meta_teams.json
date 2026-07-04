@@ -1,5 +1,5 @@
 {
-  "_note": "Meta squads + fleets for Game Health depth/fleet scoring. base_ids validated vs game data (prefers real playable units, not event variants). Refreshable by refresh_knowledge.py.",
+  "_note": "Meta squads + fleets for Game Health depth/fleet scoring. base_ids resolved to real playable units (prefers no-underscore, strips accents). Refreshable by refresh_knowledge.py.",
   "as_of": "2026-07-04",
   "squads": [
     {
@@ -239,6 +239,227 @@
         "DEATHTROOPER",
         "RANGETROOPER"
       ]
+    },
+    {
+      "id": "dr_sith",
+      "name": "Sith (Darth Revan)",
+      "faction": "Sith",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "DARTHREVAN",
+        "DARTHMALAK",
+        "BASTILASHANDARK",
+        "HK47",
+        "SITHASSASSIN"
+      ]
+    },
+    {
+      "id": "bad_batch",
+      "name": "Bad Batch (Hunter)",
+      "faction": "Bad Batch",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "BADBATCHHUNTER",
+        "BADBATCHWRECKER",
+        "BADBATCHTECH",
+        "BADBATCHECHO",
+        "BADBATCHOMEGA"
+      ]
+    },
+    {
+      "id": "inquisitors",
+      "name": "Inquisitorius (GI)",
+      "faction": "Inquisitorius",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "GRANDINQUISITOR",
+        "SECONDSISTER",
+        "SEVENTHSISTER",
+        "FIFTHBROTHER",
+        "EIGHTHBROTHER"
+      ]
+    },
+    {
+      "id": "gideon_remnant",
+      "name": "Imperial Remnant (Gideon)",
+      "faction": "Imperial Remnant",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "MOFFGIDEONS3",
+        "MOFFGIDEONS1",
+        "SCOUTTROOPER_V3",
+        "DEATHTROOPER",
+        "STORMTROOPER"
+      ]
+    },
+    {
+      "id": "ewoks",
+      "name": "Ewoks (Chirpa)",
+      "faction": "Ewok",
+      "min_relic": 3,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "CHIEFCHIRPA",
+        "LOGRAY",
+        "PAPLOO",
+        "WICKET",
+        "EWOKELDER"
+      ]
+    },
+    {
+      "id": "tuskens",
+      "name": "Tuskens",
+      "faction": "Tusken",
+      "min_relic": 3,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "TUSKENCHIEFTAIN",
+        "TUSKENRAIDER",
+        "TUSKENSHAMAN",
+        "URORRURRR",
+        "TUSKENHUNTRESS"
+      ]
+    },
+    {
+      "id": "jawas",
+      "name": "Jawas (Nebit)",
+      "faction": "Jawa",
+      "min_relic": 3,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "CHIEFNEBIT",
+        "DATHCHA",
+        "JAWA",
+        "JAWAENGINEER",
+        "JAWASCAVENGER"
+      ]
+    },
+    {
+      "id": "geos_sunfac",
+      "name": "Geonosians (Sun Fac)",
+      "faction": "Geonosian",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "SUNFAC",
+        "GEONOSIANBROODALPHA",
+        "GEONOSIANSOLDIER",
+        "GEONOSIANSPY",
+        "POGGLETHELESSER"
+      ]
+    },
+    {
+      "id": "phoenix",
+      "name": "Phoenix (Hera)",
+      "faction": "Phoenix",
+      "min_relic": 4,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "HERASYNDULLAS3",
+        "KANANJARRUSS3",
+        "EZRABRIDGERS3",
+        "SABINEWRENS3",
+        "ZEBS3"
+      ]
+    },
+    {
+      "id": "rogueone",
+      "name": "Rogue One (Cassian)",
+      "faction": "Rebel",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "CASSIANANDOR",
+        "JYNERSO",
+        "BAZEMALBUS",
+        "CHIRRUTIMWE",
+        "K2SO"
+      ]
+    },
+    {
+      "id": "scoundrels_han",
+      "name": "Scoundrels (Han)",
+      "faction": "Scoundrel",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "HANSOLO",
+        "CHEWBACCALEGENDARY",
+        "ADMINISTRATORLANDO",
+        "L3_37",
+        "QIRA"
+      ]
+    },
+    {
+      "id": "sep_dooku",
+      "name": "Separatists (Dooku)",
+      "faction": "Separatist",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "COUNTDOOKU",
+        "NUTEGUNRAY",
+        "B1BATTLEDROIDV2",
+        "B2SUPERBATTLEDROID",
+        "DROIDEKA"
+      ]
+    },
+    {
+      "id": "gg_droids",
+      "name": "Droids (GG/GBA)",
+      "faction": "Separatist",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw"
+      ],
+      "members": [
+        "GRIEVOUS",
+        "B1BATTLEDROIDV2",
+        "B2SUPERBATTLEDROID",
+        "MAGNAGUARD",
+        "STAP"
+      ]
     }
   ],
   "fleets": [
@@ -332,6 +553,32 @@
         "XANADUBLOOD",
         "IG2000",
         "PUNISHINGONE"
+      ],
+      "min_ships": 4
+    },
+    {
+      "id": "sep_malevolence",
+      "name": "Separatists (Malevolence)",
+      "capital": "CAPITALMALEVOLENCE",
+      "ships": [
+        "VULTUREDROID",
+        "HYENABOMBER",
+        "GEONOSIANSTARFIGHTER2",
+        "GEONOSIANSTARFIGHTER1",
+        "UMBARANSTARFIGHTER"
+      ],
+      "min_ships": 3
+    },
+    {
+      "id": "bh_profundity",
+      "name": "Bounty Hunters (Profundity)",
+      "capital": "CAPITALPROFUNDITY",
+      "ships": [
+        "RAZORCREST",
+        "HOUNDSTOOTH",
+        "SLAVE1",
+        "IG2000",
+        "XANADUBLOOD"
       ],
       "min_ships": 4
     }
