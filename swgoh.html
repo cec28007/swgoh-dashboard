@@ -255,6 +255,12 @@
   <form class="modalCard" id="invForm" style="width:min(580px,94vw);max-height:88vh;overflow:auto">
     <strong>💰 Inventory / Currencies</strong>
     <div class="muted" style="font-size:12px;margin-bottom:2px">Optional — fill in what you have; the coach uses these for spend advice. Saved on this device.</div>
+    <div class="row" style="margin:4px 0">
+      <button type="button" id="invReadBtn" class="attachBtn">📷 Read from screenshot(s)</button>
+      <input type="file" id="invFile" accept="image/*" multiple style="display:none" />
+      <span class="muted" id="invReadStatus" style="align-self:center;font-size:11px"></span>
+    </div>
+    <div class="muted" style="font-size:10px;margin-bottom:4px">Tip: open a currency's info popup or the Shipments top bar, screenshot it, and drop/paste it here — Gemini reads the amounts and fills the fields.</div>
     <div id="invSections"></div>
     <div id="lstBlock" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
       <strong style="font-size:13px">🌠 Lightspeed Tokens</strong>
@@ -544,8 +550,22 @@
   ];
   const LST_SCOPES = ["Any Character", "Separatist", "Smuggler", "Mandalorian", "Nightsister",
     "Bad Batch", "Empire", "Droid", "Gungan", "Legacy Heroes", "Other"];
-  let lstItems = [];
-  try { lstItems = JSON.parse(localStorage.getItem("swgohLST") || "[]"); } catch (e) { /* */ }
+  // Seed of the 2026-07-04 screenshot snapshot — only used if nothing is saved yet;
+  // your edits and the screenshot reader override it.
+  const INITIAL_INVENTORY = { credits: "126196202", ship_mats: "149354200", crystals: "1812",
+    ally_points: "103269", squad_arena: "58985", fleet_arena: "32740", galactic_war: "33200",
+    championship: "380", cantina: "68109", shard: "5731", guild: "37059", raid1: "23274",
+    raid2: "2525", raid3: "55", get1: "6312", get2: "499", get3: "200", era_currency: "12499",
+    episode_currency: "27600", conquest: "160", legend_tokens: "100", datacaches: "16293623" };
+  const INITIAL_LST = [
+    { tier: "Kyber", scope: "Any Character", qty: "2", exp: "2026-12-29" },
+    { tier: "Chromium", scope: "Separatist", qty: "1", exp: "2026-12-16" },
+  ];
+  if (localStorage.getItem("swgohTokens") == null)
+    localStorage.setItem("swgohTokens", JSON.stringify(INITIAL_INVENTORY));
+  let lstItems;
+  try { lstItems = JSON.parse(localStorage.getItem("swgohLST") || "null") || INITIAL_LST; }
+  catch (e) { lstItems = INITIAL_LST; }
 
   (function buildInventory() {
     let saved = {};
@@ -603,6 +623,54 @@
     return out;
   }
   $("#invBtn").addEventListener("click", () => { $("#invModal").style.display = "grid"; });
+
+  // --- Read inventory from screenshot(s): vision -> fill fields + LSTs ---
+  function invFileToImage(f) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const s = String(r.result);
+        res({ media_type: s.slice(5, s.indexOf(";")) || "image/png", data: s.slice(s.indexOf(",") + 1) });
+      };
+      r.onerror = rej; r.readAsDataURL(f);
+    });
+  }
+  async function readInventoryImages(files) {
+    files = files.filter(Boolean);
+    if (!files.length) return;
+    const st = $("#invReadStatus");
+    st.textContent = `Reading ${files.length} image(s)…`;
+    try {
+      const images = await Promise.all(files.map(invFileToImage));
+      const taxonomy = { fields: CURRENCIES, tiers: LST_TIERS.map(t => t[0]), scopes: LST_SCOPES };
+      const r = await fetch("/api/readinventory", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images, taxonomy }),
+      });
+      if (r.status === 401) { $("#invModal").style.display = "none"; showPin(); return; }
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+      let filled = 0;
+      for (const [k, v] of Object.entries(j.fields || {})) {
+        const el = $("#inv-" + k);
+        if (el && v != null && v !== "") { el.value = v; filled++; }
+      }
+      const lst = (j.lightspeed || []).filter(t => t && t.tier);
+      for (const t of lst) lstItems.push({ tier: t.tier, scope: t.scope || "Any Character", qty: String(t.qty || 1), exp: t.exp || "" });
+      if (lst.length) { localStorage.setItem("swgohLST", JSON.stringify(lstItems)); renderLst(); }
+      const un = (j.unmapped || []).map(u => u.name).filter(Boolean);
+      st.textContent = `Filled ${filled} field(s)` + (lst.length ? `, +${lst.length} token(s)` : "")
+        + (un.length ? ` · couldn't map: ${un.join(", ")}` : "") + ". Review, then Save.";
+      $("#invFile").value = "";
+    } catch (e) { st.textContent = "Error: " + e.message; }
+  }
+  $("#invReadBtn").addEventListener("click", () => $("#invFile").click());
+  $("#invFile").addEventListener("change", (e) => readInventoryImages([...e.target.files]));
+  $("#invModal").addEventListener("paste", (e) => {
+    const imgs = [...(e.clipboardData?.items || [])]
+      .filter(i => i.type.startsWith("image/")).map(i => i.getAsFile());
+    if (imgs.length) { e.preventDefault(); readInventoryImages(imgs); }
+  });
   $("#invForm").addEventListener("submit", (e) => {
     e.preventDefault(); readTokens(); $("#invModal").style.display = "none";
   });

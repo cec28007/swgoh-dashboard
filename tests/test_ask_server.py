@@ -209,3 +209,30 @@ class TestAuth(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestInventoryRead(unittest.TestCase):
+    TAX = {"fields": [["credits", "Credits"], ["cantina", "Cantina Battle Tokens"]],
+           "tiers": ["Carbonite", "Kyber"], "scopes": ["Any Character", "Separatist"]}
+
+    def test_prompt_lists_keys_tiers_scopes_and_asks_expansion(self):
+        p = ask_server.build_inventory_prompt(self.TAX)
+        self.assertIn("credits: Credits", p)
+        self.assertIn("Kyber", p)
+        self.assertIn("Separatist", p)
+        self.assertIn("1,000,000", p)          # tells the model to expand M
+
+    def test_parse_extracts_fields_lst_and_unmapped(self):
+        reply = ("Sure!\n```json\n"
+                 '{"fields": {"credits": 126100000, "cantina": 68109}, '
+                 '"lightspeed": [{"tier": "Kyber", "scope": "Any Character", "qty": 2, "exp": "2026-12-29"}], '
+                 '"unmapped": [{"name": "Prestige", "amount": 105}]}'
+                 "\n```")
+        out = ask_server.parse_inventory_reply(reply)
+        self.assertEqual(out["fields"]["credits"], 126100000)
+        self.assertEqual(out["lightspeed"][0]["tier"], "Kyber")
+        self.assertEqual(out["unmapped"][0]["name"], "Prestige")
+
+    def test_parse_rejects_no_json(self):
+        with self.assertRaises(ValueError):
+            ask_server.parse_inventory_reply("no json here")

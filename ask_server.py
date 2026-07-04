@@ -251,6 +251,40 @@ def build_store_payload(images, prompt):
             "generationConfig": {"maxOutputTokens": 6144}}
 
 
+def build_inventory_prompt(taxonomy):
+    """Prompt Gemini to read currency/LST screenshots into our field keys."""
+    fields = "\n".join(f"- {k}: {label}" for k, label in taxonomy.get("fields", []))
+    tiers = ", ".join(taxonomy.get("tiers", []))
+    scopes = ", ".join(taxonomy.get("scopes", []))
+    return (
+        "The attached screenshot(s) are from Star Wars: Galaxy of Heroes — inventory, "
+        "shipments/store, currency popups, or a Lightspeed Token screen. Read EVERY "
+        "currency/token and its numeric amount. Use the LEFT/TOTAL number (ignore any "
+        "'/ cap' maximum), strip commas, and EXPAND abbreviations to the full integer "
+        "(K = x1,000, M = x1,000,000; e.g. '126.1M' -> 126100000).\n\n"
+        "Map each currency to exactly ONE of these field keys by meaning:\n" + fields + "\n\n"
+        "For a LIGHTSPEED TOKEN screen, report it under 'lightspeed' with: tier (one of: "
+        f"{tiers}), scope (one of: {scopes}; use 'Any Character' when not faction-locked), "
+        "qty (how many you hold if shown, else 1), and exp (expiry date as YYYY-MM-DD if a "
+        "'must be used by' date is shown, else empty).\n"
+        "Put anything you can read but cannot confidently map under 'unmapped'.\n\n"
+        'Reply with ONLY JSON, no prose: {"fields": {"<key>": <integer>, ...}, '
+        '"lightspeed": [{"tier": "...", "scope": "...", "qty": <int>, "exp": "..."}], '
+        '"unmapped": [{"name": "<on-screen name>", "amount": <integer>}]}'
+    )
+
+
+def parse_inventory_reply(text):
+    """Extract the inventory JSON from a model reply; tolerant of prose/fences."""
+    m = re.search(r"\{.*\}", text or "", re.S)
+    if not m:
+        raise ValueError("No JSON found in the inventory read.")
+    d = json.loads(m.group(0))
+    return {"fields": d.get("fields") or {},
+            "lightspeed": d.get("lightspeed") or [],
+            "unmapped": d.get("unmapped") or []}
+
+
 def summarize_video(url):
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
@@ -417,6 +451,33 @@ class Handler(BaseHTTPRequestHandler):
                     gameplan.load_knowledge(), req.get("econ") or {},
                     req.get("question") or "")
                 return self._send(200, {"brief": brief})
+            except Exception as e:  # noqa: BLE001
+                return self._send(500, {"error": str(e)})
+
+        if route == "/api/readinventory":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            try:
+                req = self._read_json()
+                images = req.get("images") or []
+                if not images:
+                    raise ValueError("Attach at least one inventory screenshot.")
+                for im in images:
+                    validate_image(im)
+                key = os.environ.get("GEMINI_API_KEY")
+                if not key:
+                    raise RuntimeError("GEMINI_API_KEY is not set in the server environment")
+                payload = build_store_payload(
+                    images, build_inventory_prompt(req.get("taxonomy") or {}))
+                out = post_to_gemini(payload, key)
+                c = out.get("candidates", [])
+                if not c:
+                    raise RuntimeError(out.get("error", {}).get("message", "No response."))
+                text = "".join(p.get("text", "")
+                               for p in c[0].get("content", {}).get("parts", []))
+                return self._send(200, parse_inventory_reply(text))
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
             except Exception as e:  # noqa: BLE001
                 return self._send(500, {"error": str(e)})
 
