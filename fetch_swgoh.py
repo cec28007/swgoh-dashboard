@@ -157,6 +157,7 @@ def normalize_comlink(payload, maps=None, stats_map=None):
     """
     names = (maps or {}).get("names", {})
     skill_map = (maps or {}).get("skills", {})
+    icon_map = (maps or {}).get("icons", {})
     stats_map = stats_map or {}
     units = []
     for u in payload.get("rosterUnit", []):
@@ -184,7 +185,8 @@ def normalize_comlink(payload, maps=None, stats_map=None):
             "type": "ship" if is_ship else "character",
             "stars": stars, "level": level, "gear_level": gear_level,
             "relic": relic, "power": power, "speed": speed,
-            "zetas": zetas, "omicrons": omis, "stats": unit_stats, "url": None,
+            "zetas": zetas, "omicrons": omis, "stats": unit_stats,
+            "icon": icon_map.get(base_id), "url": None,
         })
     units.sort(key=lambda x: x["power"], reverse=True)
 

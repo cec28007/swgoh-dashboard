@@ -49,6 +49,17 @@ def build_name_map(units, loc):
     return names
 
 
+def build_icon_map(units):
+    """base_id -> portrait thumbnail key (for game-assets.swgoh.gg/textures/<key>.png)."""
+    out = {}
+    for u in units:
+        base_id = u.get("baseId") or u.get("id")
+        thumb = u.get("thumbnailName")
+        if base_id and thumb:
+            out[base_id] = thumb
+    return out
+
+
 def build_skill_map(skills):
     """skill_id -> {zeta_tier, omicron_tier} as 0-based tier indices.
 
@@ -122,6 +133,7 @@ def fetch_maps(comlink_url=None, poster=_post):
         "version": version,
         "names": build_name_map(units, loc),
         "skills": build_skill_map(skills),
+        "icons": build_icon_map(units),
     }
 
 

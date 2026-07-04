@@ -75,6 +75,7 @@ ENRICHED = {
 MAPS = {
     "version": "x",
     "names": {"GLLEIA": "Grand Master Leia Organa"},
+    "icons": {"GLLEIA": "tex.charui_leiaendor"},
     "skills": {"leader_GLLEIA": {"zeta_tier": 2, "omicron_tier": 3},
                "basic_GLLEIA": {"zeta_tier": None, "omicron_tier": None}},
 }
@@ -91,6 +92,9 @@ class TestNormalizeComlinkEnriched(unittest.TestCase):
     def test_real_zeta_omicron_counts(self):
         self.assertEqual(self.leia["zetas"], 1)
         self.assertEqual(self.leia["omicrons"], 1)
+
+    def test_portrait_icon(self):
+        self.assertEqual(self.leia["icon"], "tex.charui_leiaendor")
 
     def test_real_gp_totals_from_profile_stat(self):
         self.assertEqual(self.r["galactic_power"], 7285105)

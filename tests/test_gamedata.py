@@ -36,6 +36,17 @@ class TestBuildNameMap(unittest.TestCase):
         self.assertEqual(names["MYSTERY"], "MYSTERY")
 
 
+class TestBuildIconMap(unittest.TestCase):
+    def test_base_id_to_thumbnail(self):
+        units = [{"baseId": "GLLEIA", "thumbnailName": "tex.charui_leiaendor"},
+                 {"id": "REY", "thumbnailName": "tex.charui_rey"},
+                 {"baseId": "NOICON"}]
+        m = gamedata.build_icon_map(units)
+        self.assertEqual(m["GLLEIA"], "tex.charui_leiaendor")
+        self.assertEqual(m["REY"], "tex.charui_rey")
+        self.assertNotIn("NOICON", m)   # skip units without a thumbnail
+
+
 class TestBuildSkillMap(unittest.TestCase):
     def test_finds_zeta_and_omicron_tiers(self):
         skills = [

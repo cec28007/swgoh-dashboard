@@ -80,6 +80,10 @@
   table.sc { border-collapse:collapse; width:100%; font-size:12px; white-space:normal; }
   table.sc th, table.sc td { border:1px solid var(--line); padding:5px 7px; text-align:left; vertical-align:top; }
   table.sc th { color:var(--muted); }
+  .invGrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
+  .invGrid label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:2px; text-align:left; }
+  img.port { width:26px; height:26px; border-radius:5px; vertical-align:middle; margin-right:7px;
+        border:1px solid var(--line); background:var(--bg); object-fit:cover; }
 </style>
 </head>
 <body>
@@ -91,43 +95,7 @@
 </header>
 
 <div class="wrap">
-  <div class="plan" id="plan">
-    <h2>🧭 Game Plan</h2>
-    <div class="muted" style="font-size:12px;margin-bottom:2px">
-      A prioritized roadmap from your roster — fastest Galactic Legend path, key gear/relic moves, and farming focus. Add token balances (optional) for spend tips.
-    </div>
-    <div class="tokens">
-      <label>Lightspeed Tokens<input id="tok-lightspeed" type="number" inputmode="numeric" placeholder="e.g. 14000" /></label>
-      <label>Era Shipment Tokens<input id="tok-era" type="number" inputmode="numeric" placeholder="optional" /></label>
-      <label>Crystals<input id="tok-crystals" type="number" inputmode="numeric" placeholder="optional" /></label>
-    </div>
-    <div class="row">
-      <button id="planBtn">Generate my plan</button>
-      <span class="muted" id="planStatus" style="align-self:center"></span>
-    </div>
-    <div class="planout" id="planOut"></div>
-  </div>
-  <div class="plan" id="store">
-    <h2>🛒 Store Check</h2>
-    <div class="muted" style="font-size:12px;margin-bottom:2px">
-      Screenshot your store — scroll and snap each part, attach several — and I'll rate each item for your account (uses the token balances above).
-    </div>
-    <div class="attachRow">
-      <label class="attachBtn">📎 Add store screenshot
-        <input id="storeFile" type="file" accept="image/*" multiple hidden />
-      </label>
-      <span class="muted" id="storeCount" style="font-size:12px"></span>
-    </div>
-    <div id="storeThumbs" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
-    <div class="row">
-      <button id="storeBtn">Check the store</button>
-      <span class="muted" id="storeStatus" style="align-self:center"></span>
-    </div>
-    <div class="planout" id="storeOut"></div>
-  </div>
-  <div class="digest" id="digest" style="display:none"></div>
-  <div class="kpis" id="kpis"></div>
-
+  <!-- 1) Ask (top) -->
   <div class="ask">
     <strong>🤖 Ask about your roster</strong>
     <div class="muted" style="font-size:12px;margin:4px 0 8px">
@@ -150,6 +118,44 @@
     </div>
     <div class="answer" id="answer"></div>
   </div>
+
+  <!-- 2) Suggestions: Game Plan + Store Check -->
+  <div class="plan" id="plan">
+    <h2>🧭 Game Plan</h2>
+    <div class="muted" style="font-size:12px;margin-bottom:2px">
+      A prioritized roadmap from your roster — fastest Galactic Legend path, key gear/relic moves, and farming focus. Add your currencies (💰 Inventory) for spend tips.
+    </div>
+    <div class="row">
+      <button id="planBtn">Generate my plan</button>
+      <button id="invBtn" class="attachBtn" type="button">💰 Inventory</button>
+      <span class="muted" id="planStatus" style="align-self:center"></span>
+    </div>
+    <div class="planout" id="planOut"></div>
+  </div>
+  <div class="plan" id="store">
+    <h2>🛒 Store Check</h2>
+    <div class="muted" style="font-size:12px;margin-bottom:2px">
+      Screenshot your store — scroll and snap each part, attach several — and I'll rate each item for your account (uses your saved 💰 Inventory currencies).
+    </div>
+    <div class="attachRow">
+      <label class="attachBtn">📎 Add store screenshot
+        <input id="storeFile" type="file" accept="image/*" multiple hidden />
+      </label>
+      <span class="muted" id="storeCount" style="font-size:12px"></span>
+    </div>
+    <div id="storeThumbs" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+    <div class="row">
+      <button id="storeBtn">Check the store</button>
+      <span class="muted" id="storeStatus" style="align-self:center"></span>
+    </div>
+    <div class="planout" id="storeOut"></div>
+  </div>
+
+  <!-- 3) News feed -->
+  <div class="digest" id="digest" style="display:none"></div>
+
+  <!-- 4) Roster -->
+  <div class="kpis" id="kpis"></div>
 
   <div class="controls">
     <input type="search" id="search" placeholder="Filter by name…" />
@@ -190,6 +196,15 @@
     <input id="pinInput" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off" />
     <button type="submit">Unlock</button>
     <div class="err" id="pinErr"></div>
+  </form>
+</div>
+
+<div class="modal" id="invModal" style="display:none">
+  <form class="modalCard" id="invForm" style="width:min(480px,92vw)">
+    <strong>💰 Inventory / Currencies</strong>
+    <div class="muted" style="font-size:12px;margin-bottom:2px">Optional — fill in what you want. The coach uses these for spend advice. Saved on this device.</div>
+    <div class="invGrid" id="invGrid"></div>
+    <button type="submit">Save</button>
   </form>
 </div>
 
@@ -289,7 +304,7 @@
     });
     $("#roster tbody").innerHTML = rows.map(u => `
       <tr>
-        <td>${u.url ? `<a href="${u.url}" target="_blank" rel="noopener">${u.name}</a>` : u.name}</td>
+        <td>${u.icon ? `<img class="port" loading="lazy" alt="" onerror="this.style.display='none'" src="https://game-assets.swgoh.gg/textures/${u.icon}.png">` : ""}${u.url ? `<a href="${u.url}" target="_blank" rel="noopener">${u.name}</a>` : u.name}</td>
         <td><span class="pill">${u.type}</span></td>
         <td class="num">${u.stars || 0}</td>
         <td class="num">${u.type === "ship" ? "—" : (u.gear_level || 0)}</td>
@@ -384,24 +399,38 @@
     }
   });
 
-  // --- Game Plan: roster + optional tokens -> /api/gameplan (grounded coach) ---
-  const TOK = { lightspeed: "Lightspeed Tokens", era: "Era Shipment Tokens", crystals: "Crystals" };
-  (function hydrateTokens() {
-    try {
-      const saved = JSON.parse(localStorage.getItem("swgohTokens") || "{}");
-      for (const k in TOK) if (saved[k] != null) $("#tok-" + k).value = saved[k];
-    } catch (e) { /* ignore */ }
+  // --- Inventory / currencies (modal; used by Game Plan + Store Check) ---
+  const CURRENCIES = [
+    ["lightspeed", "Lightspeed Tokens"], ["era", "Era Shipment Tokens"], ["crystals", "Crystals"],
+    ["get1", "GET1 tokens"], ["get2", "GET2 tokens"], ["get3", "GET3 tokens"],
+    ["guild", "Guild Tokens"], ["squad", "Squad Arena Tokens"], ["fleet", "Fleet Arena Tokens"],
+    ["gw", "Galactic War Tokens"], ["cantina", "Cantina Tokens"], ["shard", "Shard Shop currency"],
+    ["conquest", "Conquest Tokens"], ["mod", "Mod Store credits"],
+  ];
+  (function buildInventory() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem("swgohTokens") || "{}"); } catch (e) { /* */ }
+    $("#invGrid").innerHTML = CURRENCIES.map(([k, label]) => {
+      const v = saved[k] != null ? esc(saved[k]) : "";
+      return `<label>${label}<input id="inv-${k}" type="number" inputmode="numeric" value="${v}" placeholder="—" /></label>`;
+    }).join("");
   })();
   function readTokens() {
     const raw = {}, out = {};
-    for (const k in TOK) {
-      const v = $("#tok-" + k).value.trim();
+    for (const [k, label] of CURRENCIES) {
+      const el = $("#inv-" + k), v = el ? el.value.trim() : "";
       raw[k] = v;
-      if (v) out[TOK[k]] = v;
+      if (v) out[label] = v;
     }
     localStorage.setItem("swgohTokens", JSON.stringify(raw));
     return out;
   }
+  $("#invBtn").addEventListener("click", () => { $("#invModal").style.display = "grid"; });
+  $("#invForm").addEventListener("submit", (e) => {
+    e.preventDefault(); readTokens(); $("#invModal").style.display = "none";
+  });
+
+  // --- Game Plan: roster + saved currencies -> /api/gameplan (grounded coach) ---
   $("#planBtn").addEventListener("click", async () => {
     const st = $("#planStatus"), out = $("#planOut"), btn = $("#planBtn");
     const tokens = readTokens();
