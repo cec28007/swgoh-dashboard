@@ -49,36 +49,44 @@ def gl_readiness(units, goals):
 
 
 def build_plan_prompt(roster_summary, readiness, tokens, meta_titles):
+    owned = [g["name"] for g in readiness if g["unlocked"]]
     lines = []
     for g in readiness:
         if g["unlocked"]:
-            lines.append(f"- {g['name']}: UNLOCKED"
-                         + (f"; still under-relic: {', '.join(u['name'] for u in g['under_relic'])}"
-                            if g["under_relic"] else ""))
-        else:
-            bits = [f"{g['met']}/{g['total']} prereqs met"]
-            if g["missing"]:
-                bits.append("missing: " + ", ".join(g["missing"]))
-            if g["under_relic"]:
-                bits.append("under-relic: " + ", ".join(
-                    f"{u['name']} R{u['have']}<R{u['need']}" for u in g["under_relic"]))
-            lines.append(f"- {g['name']}: " + "; ".join(bits))
+            continue
+        bits = [f"unlock-team {g['met']}/{g['total']} ready"]
+        if g["missing"]:
+            bits.append("don't own: " + ", ".join(g["missing"]))
+        if g["under_relic"]:
+            bits.append("below R5: " + ", ".join(
+                f"{u['name']} R{u['have']}" for u in g["under_relic"]))
+        lines.append(f"- {g['name']}: " + "; ".join(bits))
     tok = {k: v for k, v in (tokens or {}).items() if str(v).strip()}
     token_block = ("\nCurrent token balances (spend advice): "
                    + json.dumps(tok) + "\n") if tok else ""
     meta_block = ("\nWhat's meta/current right now (recent community content):\n"
                   + "\n".join(f"- {t}" for t in meta_titles) + "\n") if meta_titles else ""
+    owned_block = ("Galactic Legends already UNLOCKED: " + ", ".join(owned) + ".\n"
+                   if owned else "No Galactic Legends unlocked yet.\n")
     return (
-        "You are an elite Star Wars: Galaxy of Heroes progression coach. Using the "
-        "COMPUTED facts below (do not contradict them), give a PRIORITIZED, specific "
-        "action plan to progress most efficiently, ranked by impact-per-effort. Cover: "
-        "(1) the fastest Galactic Legend to unlock/finish and the exact next units to "
-        "unlock/gear/relic; (2) the 2-3 highest-impact gear/relic/team moves next; "
-        "(3) the most efficient farming focus; (4) if token balances are given, what to "
-        "spend them on. Be concise and specific to THIS roster.\n\n"
+        "You are an elite Star Wars: Galaxy of Heroes progression coach. The roster "
+        "facts below are accurate — do not contradict the roster data. Give a "
+        "PRIORITIZED, specific action plan to progress most efficiently, ranked by "
+        "impact-per-effort. Cover: (1) the most realistic next Galactic Legend and the "
+        "key units to unlock/gear/relic toward it; (2) the 2-3 highest-impact gear/relic/"
+        "team moves; (3) efficient farming focus; (4) if token balances are given, what "
+        "to spend them on. Be concise and specific to THIS roster.\n\n"
+        "IMPORTANT — read carefully to avoid bad advice: the list below shows only each "
+        "GL's 5-unit UNLOCK-BATTLE TEAM (the final battle), NOT the full requirement. "
+        "Unlocking a Galactic Legend actually needs a LARGE roster of that faction at "
+        "Relic 5+ (roughly 10-14 units), plus the GL's own ticket requirements. Use your "
+        "knowledge of each GL's FULL prerequisite list. Do NOT tell the player a GL is "
+        "'one unit away' or nearly unlocked based on this 5-unit team alone. If you are "
+        "unsure of the exact full requirements, say so rather than guessing.\n\n"
         f"ROSTER SUMMARY:\n{roster_summary}\n\n"
-        f"GALACTIC LEGEND READINESS (computed from the real roster, closest first):\n"
-        + "\n".join(lines) + "\n"
+        + owned_block
+        + "GL UNLOCK-BATTLE TEAM STATUS (5 units each — NOT the full requirement):\n"
+        + ("\n".join(lines) if lines else "- (all listed GLs already unlocked)") + "\n"
         + token_block + meta_block
     )
 
@@ -88,23 +96,14 @@ def priorities_text(roster, goals, tokens):
     units = roster.get("units", [])
     readiness = gl_readiness(units, goals)
     owned = [g["name"] for g in readiness if g["unlocked"]]
-    unstarted = [g for g in readiness if not g["unlocked"]]
+    unstarted = [g["name"] for g in readiness if not g["unlocked"]]
     lines = [f"Player {roster.get('name')}, GP {roster.get('galactic_power')}."]
     if owned:
         lines.append("Owned Galactic Legends: " + ", ".join(owned) + ".")
     if unstarted:
-        g = unstarted[0]
-        gap = []
-        if g["missing"]:
-            gap.append("missing " + ", ".join(g["missing"]))
-        if g["under_relic"]:
-            gap.append("under-relic " + ", ".join(
-                f"{u['name']} R{u['have']}<R{u['need']}" for u in g["under_relic"]))
-        lines.append(f"Closest next GL: {g['name']} — "
-                     + ("; ".join(gap) if gap else "prereqs nearly done") + ".")
-        nxt = [x["name"] for x in unstarted[1:3]]
-        if nxt:
-            lines.append("After that: " + ", ".join(nxt) + ".")
+        lines.append("Not yet unlocked: " + ", ".join(unstarted)
+                     + " (each needs a large faction roster at Relic 5+; use their full "
+                       "requirements — don't assume any is nearly done).")
     tok = {k: v for k, v in (tokens or {}).items() if str(v).strip()}
     if tok:
         lines.append("Current token balances: " + json.dumps(tok) + ".")
