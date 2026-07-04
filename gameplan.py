@@ -54,12 +54,12 @@ def build_plan_prompt(roster_summary, readiness, tokens, meta_titles):
     for g in readiness:
         if g["unlocked"]:
             continue
-        bits = [f"unlock-team {g['met']}/{g['total']} ready"]
+        bits = [f"{g['met']}/{g['total']} requirements met"]
         if g["missing"]:
             bits.append("don't own: " + ", ".join(g["missing"]))
         if g["under_relic"]:
-            bits.append("below R5: " + ", ".join(
-                f"{u['name']} R{u['have']}" for u in g["under_relic"]))
+            bits.append("below target: " + ", ".join(
+                f"{u['name']} R{u['have']}(need R{u['need']})" for u in g["under_relic"]))
         lines.append(f"- {g['name']}: " + "; ".join(bits))
     tok = {k: v for k, v in (tokens or {}).items() if str(v).strip()}
     token_block = ("\nCurrent token balances (spend advice): "
@@ -72,20 +72,18 @@ def build_plan_prompt(roster_summary, readiness, tokens, meta_titles):
         "You are an elite Star Wars: Galaxy of Heroes progression coach. The roster "
         "facts below are accurate — do not contradict the roster data. Give a "
         "PRIORITIZED, specific action plan to progress most efficiently, ranked by "
-        "impact-per-effort. Cover: (1) the most realistic next Galactic Legend and the "
-        "key units to unlock/gear/relic toward it; (2) the 2-3 highest-impact gear/relic/"
-        "team moves; (3) efficient farming focus; (4) if token balances are given, what "
-        "to spend them on. Be concise and specific to THIS roster.\n\n"
-        "IMPORTANT — read carefully to avoid bad advice: the list below shows only each "
-        "GL's 5-unit UNLOCK-BATTLE TEAM (the final battle), NOT the full requirement. "
-        "Unlocking a Galactic Legend actually needs a LARGE roster of that faction at "
-        "Relic 5+ (roughly 10-14 units), plus the GL's own ticket requirements. Use your "
-        "knowledge of each GL's FULL prerequisite list. Do NOT tell the player a GL is "
-        "'one unit away' or nearly unlocked based on this 5-unit team alone. If you are "
-        "unsure of the exact full requirements, say so rather than guessing.\n\n"
+        "impact-per-effort. Cover: (1) the most realistic next Galactic Legend (the one "
+        "closest by the requirements below) and the specific units to unlock/gear/relic; "
+        "(2) the 2-3 highest-impact gear/relic/team moves; (3) efficient farming focus; "
+        "(4) if token balances are given, what to spend them on. Be concise and specific.\n\n"
+        "The GL requirement lists below are a curated best-effort of each GL's FULL "
+        "prerequisite roster (units at 7 stars + the listed relic). They may be slightly "
+        "incomplete or off — if you know a listed GL needs a unit missing here, or a relic "
+        "target looks wrong, mention it briefly, but otherwise base your advice on this "
+        "readiness. Do not overstate how close a GL is.\n\n"
         f"ROSTER SUMMARY:\n{roster_summary}\n\n"
         + owned_block
-        + "GL UNLOCK-BATTLE TEAM STATUS (5 units each — NOT the full requirement):\n"
+        + "GALACTIC LEGEND REQUIREMENT READINESS (your roster vs each GL's full prereqs, closest first):\n"
         + ("\n".join(lines) if lines else "- (all listed GLs already unlocked)") + "\n"
         + token_block + meta_block
     )
