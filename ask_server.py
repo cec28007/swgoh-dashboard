@@ -35,7 +35,7 @@ PORT = int(os.environ.get("ASK_PORT", "8787"))
 HOST = os.environ.get("ASK_HOST", "127.0.0.1")
 MODEL = os.environ.get("ASK_MODEL", "gemini-2.5-flash")
 # Gemini 2.5 spends "thinking" tokens against this budget, so keep it generous.
-MAX_TOKENS = int(os.environ.get("ASK_MAX_TOKENS", "4096"))
+MAX_TOKENS = int(os.environ.get("ASK_MAX_TOKENS", "8192"))
 MAX_IMAGE_BYTES = 4 * 1024 * 1024
 ALLOWED_MEDIA_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
 API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
