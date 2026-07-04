@@ -178,6 +178,45 @@ def build_payload(question, roster, image):
     }
 
 
+def build_conversation_payload(history, roster, image):
+    """Multi-turn Gemini payload. Roster + optional image ride on the first user
+    turn; later turns are plain text so the whole thread keeps that context.
+    history is a list of {"role": "user"|"model", "text": str}.
+    """
+    contents = []
+    for i, turn in enumerate(history):
+        role = turn.get("role") or "user"
+        text = turn.get("text", "")
+        if i == 0:
+            parts = []
+            if image:
+                parts.append({"inline_data": {
+                    "mime_type": image["media_type"], "data": image["data"]}})
+            parts.append({"text":
+                          f"My roster:\n{json.dumps(slim_roster(roster))}\n\nQuestion: {text}"})
+        else:
+            parts = [{"text": text}]
+        contents.append({"role": role, "parts": parts})
+    return {
+        "system_instruction": {"parts": [{"text": SYSTEM}]},
+        "contents": contents,
+        "generationConfig": {"maxOutputTokens": MAX_TOKENS},
+    }
+
+
+def ask_conversation(history, roster, image=None):
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY is not set in the server environment")
+    validate_image(image)
+    out = post_to_gemini(build_conversation_payload(history, roster, image), key)
+    candidates = out.get("candidates", [])
+    if not candidates:
+        raise RuntimeError(out.get("error", {}).get("message", "No answer returned."))
+    parts = candidates[0].get("content", {}).get("parts", [])
+    return "".join(p.get("text", "") for p in parts)
+
+
 SUMMARY_PROMPT = (
     "You are a Star Wars: Galaxy of Heroes coach. In 3-4 short bullet points, "
     "summarize the key tips, strategy, or takeaways from this video so the viewer "
@@ -318,8 +357,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(401, {"error": "locked"})
             try:
                 req = self._read_json()
-                answer = ask_ai(
-                    req.get("question", ""), req.get("roster", {}), req.get("image"))
+                history = req.get("history")
+                if not history:  # single-turn fallback (older clients)
+                    history = [{"role": "user", "text": req.get("question", "")}]
+                answer = ask_conversation(
+                    history, req.get("roster", {}), req.get("image"))
                 return self._send(200, {"answer": answer})
             except ValueError as e:  # image guard / bad input
                 return self._send(400, {"error": str(e)})

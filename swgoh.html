@@ -43,9 +43,15 @@
   .ask textarea { width:100%; min-height:64px; background:var(--bg); color:var(--txt);
           border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; resize:vertical; }
   .ask .row { display:flex; gap:8px; margin-top:8px; }
-  .answer { white-space:pre-wrap; margin-top:12px; padding:12px; background:var(--bg);
+  .answer { white-space:pre-wrap; margin:0 0 10px; padding:12px; background:var(--bg);
           border:1px solid var(--line); border-radius:8px; display:none;
           max-height:55vh; overflow:auto; }
+  .answer .turn { margin:0 0 12px; }
+  .answer .turn:last-child { margin-bottom:0; }
+  .answer .turn .who { display:block; font-size:11px; font-weight:600; margin-bottom:2px;
+          text-transform:uppercase; letter-spacing:.03em; }
+  .answer .turn.user .who { color:var(--muted); }
+  .answer .turn.model .who { color:var(--accent); }
   .muted { color:var(--muted); }
   .attachRow { display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap; }
   .attachBtn { display:inline-block; cursor:pointer; font-size:13px; padding:7px 11px;
@@ -129,8 +135,9 @@
   <div class="ask">
     <strong>🤖 Ask about your roster</strong>
     <div class="muted" style="font-size:12px;margin:4px 0 8px">
-      e.g. "who can I beat this defense with?" — attach or paste a game screenshot for context. Powered by Gemini, using your roster below.
+      Ask a question (attach or paste a game screenshot for context), then keep asking follow-ups — it remembers your roster and the screenshot. Powered by Gemini.
     </div>
+    <div class="answer" id="answer"></div>
     <textarea id="q" placeholder="Ask a strategy question… (you can paste a screenshot too)"></textarea>
     <div class="attachRow">
       <label class="attachBtn">📎 Attach screenshot
@@ -144,9 +151,9 @@
     </div>
     <div class="row">
       <button id="askBtn">Ask</button>
+      <button id="newConvoBtn" class="attachBtn" type="button">New conversation</button>
       <span class="muted" id="askStatus" style="align-self:center"></span>
     </div>
-    <div class="answer" id="answer"></div>
   </div>
 
   <!-- 2) Suggestions: Game Plan + Store Check -->
@@ -387,30 +394,43 @@
     if (item) fileToAttached(item.getAsFile());
   });
 
+  let convo = [];  // {role:"user"|"model", text}
+  function renderThread() {
+    const el = $("#answer");
+    if (!convo.length) { el.innerHTML = ""; el.style.display = "none"; return; }
+    el.innerHTML = convo.map(t =>
+      `<div class="turn ${t.role}"><span class="who">${t.role === "user" ? "You" : "Coach"}</span>${esc(t.text)}</div>`).join("");
+    el.style.display = "block";
+    el.scrollTop = el.scrollHeight;
+  }
   async function runAsk() {
     const question = $("#q").value.trim();
-    if (!question && !attached) return;
-    const ans = $("#answer"), st = $("#askStatus");
-    st.textContent = "thinking…"; ans.style.display = "none";
+    if (!question) return;
+    const st = $("#askStatus");
+    convo.push({ role: "user", text: question });
+    renderThread(); $("#q").value = "";
+    st.textContent = "thinking…"; $("#askBtn").disabled = true;
     try {
       const r = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, roster: D, image: attached }),
+        body: JSON.stringify({ history: convo, roster: D, image: attached }),
       });
-      if (r.status === 401) { st.textContent = ""; showPin(); return; }
+      if (r.status === 401) { st.textContent = ""; $("#askBtn").disabled = false; convo.pop(); renderThread(); showPin(); return; }
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
-      ans.textContent = j.answer || JSON.stringify(j);
-      ans.style.display = "block"; st.textContent = "";
-      clearAttached();
+      convo.push({ role: "model", text: j.answer }); renderThread(); st.textContent = "";
     } catch (e) {
       st.textContent = "";
-      ans.style.display = "block";
-      ans.textContent = "Couldn't get an answer: " + e.message;
+      convo.push({ role: "model", text: "⚠️ " + e.message }); renderThread();
     }
+    $("#askBtn").disabled = false;
   }
   $("#askBtn").addEventListener("click", runAsk);
+  $("#newConvoBtn").addEventListener("click", () => {
+    convo = []; clearAttached(); renderThread();
+    $("#q").value = ""; $("#askStatus").textContent = "";
+  });
 
   // --- PIN modal: shown if /api/ask returns 401 (cookie missing or expired) ---
   function showPin() { $("#pinModal").style.display = "grid"; $("#pinInput").focus(); }

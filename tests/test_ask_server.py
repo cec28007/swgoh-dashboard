@@ -55,6 +55,39 @@ class TestBuildPayload(unittest.TestCase):
         self.assertEqual(parts[-1]["text"], "Question: counter this")
 
 
+class TestConversation(unittest.TestCase):
+    def _base(self):
+        return {"units": [{"name": "Rey", "type": "character"}]}
+
+    def test_first_turn_carries_roster_and_image(self):
+        hist = [{"role": "user", "text": "who wins?"}]
+        img = {"media_type": "image/png", "data": "QUJD"}
+        p = ask_server.build_conversation_payload(hist, self._base(), img)
+        parts = p["contents"][0]["parts"]
+        self.assertEqual(parts[0]["inline_data"]["data"], "QUJD")   # image on turn 0
+        self.assertIn("Rey", parts[-1]["text"])                     # roster on turn 0
+        self.assertIn("who wins?", parts[-1]["text"])
+
+    def test_follow_up_turns_are_plain_text(self):
+        hist = [{"role": "user", "text": "who wins?"},
+                {"role": "model", "text": "Rey wins."},
+                {"role": "user", "text": "and the ships?"}]
+        p = ask_server.build_conversation_payload(hist, self._base(), None)
+        self.assertEqual(len(p["contents"]), 3)
+        self.assertEqual(p["contents"][1]["role"], "model")
+        self.assertEqual(p["contents"][1]["parts"][0]["text"], "Rey wins.")
+        self.assertEqual(p["contents"][2]["parts"][0]["text"], "and the ships?")
+        self.assertNotIn("Rey wins.", p["contents"][2]["parts"][0]["text"])
+
+    def test_ask_conversation_returns_text(self):
+        hist = [{"role": "user", "text": "hi"}]
+        with mock.patch.dict(ask_server.os.environ, {"GEMINI_API_KEY": "k"}), \
+                mock.patch.object(ask_server, "post_to_gemini",
+                                  lambda p, k: {"candidates": [{"content": {"parts": [
+                                      {"text": "hello"}]}}]}):
+            self.assertEqual(ask_server.ask_conversation(hist, self._base()), "hello")
+
+
 class TestValidateImage(unittest.TestCase):
     def test_none_ok(self):
         self.assertIsNone(ask_server.validate_image(None))
