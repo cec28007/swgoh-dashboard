@@ -1,0 +1,48 @@
+{
+  "_note": "Galactic Legend readiness data. 'requirements' are each GL's key unlock-battle units (game-verified base_ids from the recommendedSquad data), used to gauge how close you are. Relic targets default to 5 and are approximate; the coach (Gemini) fills in the full prerequisite/relic picture. Update as new GLs release — see docs.",
+  "galactic_legends": [
+    {"id": "SITHPALPATINE", "name": "Sith Eternal Emperor", "requirements": [
+      {"base_id": "EMPERORPALPATINE", "name": "Emperor Palpatine", "relic": 5},
+      {"base_id": "VADER", "name": "Darth Vader", "relic": 5},
+      {"base_id": "GRANDADMIRALTHRAWN", "name": "Grand Admiral Thrawn", "relic": 5},
+      {"base_id": "ADMIRALPIETT", "name": "Admiral Piett", "relic": 5},
+      {"base_id": "DARTHSIDIOUS", "name": "Darth Sidious", "relic": 5}]},
+    {"id": "SUPREMELEADERKYLOREN", "name": "Supreme Leader Kylo Ren", "requirements": [
+      {"base_id": "KYLORENUNMASKED", "name": "Kylo Ren (Unmasked)", "relic": 5},
+      {"base_id": "FIRSTORDERTROOPER", "name": "First Order Stormtrooper", "relic": 5},
+      {"base_id": "FIRSTORDEREXECUTIONER", "name": "First Order Executioner", "relic": 5},
+      {"base_id": "FOSITHTROOPER", "name": "Sith Trooper", "relic": 5},
+      {"base_id": "GENERALHUX", "name": "General Hux", "relic": 5}]},
+    {"id": "GLREY", "name": "Rey (Galactic Legend)", "requirements": [
+      {"base_id": "REYJEDITRAINING", "name": "Rey (Jedi Training)", "relic": 5},
+      {"base_id": "EPIXPOE", "name": "Resistance Hero Poe", "relic": 5},
+      {"base_id": "EPIXFINN", "name": "Resistance Hero Finn", "relic": 5},
+      {"base_id": "AMILYNHOLDO", "name": "Amilyn Holdo", "relic": 5},
+      {"base_id": "BB8", "name": "BB-8", "relic": 5}]},
+    {"id": "JEDIMASTERKENOBI", "name": "Jedi Master Kenobi", "requirements": [
+      {"base_id": "GRANDMASTERYODA", "name": "Grand Master Yoda", "relic": 5},
+      {"base_id": "GENERALKENOBI", "name": "General Kenobi", "relic": 5},
+      {"base_id": "QUIGONJINN", "name": "Qui-Gon Jinn", "relic": 5},
+      {"base_id": "SHAAKTI", "name": "Shaak Ti", "relic": 5},
+      {"base_id": "AAYLASECURA", "name": "Aayla Secura", "relic": 5}]},
+    {"id": "LORDVADER", "name": "Lord Vader", "requirements": [
+      {"base_id": "BADBATCHHUNTER", "name": "Hunter", "relic": 5},
+      {"base_id": "BADBATCHTECH", "name": "Tech", "relic": 5},
+      {"base_id": "BADBATCHWRECKER", "name": "Wrecker", "relic": 5},
+      {"base_id": "BADBATCHECHO", "name": "Echo", "relic": 5},
+      {"base_id": "ARCTROOPER501ST", "name": "ARC Trooper", "relic": 5}]},
+    {"id": "JABBATHEHUTT", "name": "Jabba the Hutt", "requirements": [
+      {"base_id": "BOUSHH", "name": "Boushh (Leia)", "relic": 5},
+      {"base_id": "UNDERCOVERLANDO", "name": "Skiff Guard (Lando)", "relic": 5},
+      {"base_id": "KRRSANTAN", "name": "Krrsantan", "relic": 5},
+      {"base_id": "GAMORREANGUARD", "name": "Gamorrean Guard", "relic": 5},
+      {"base_id": "HUMANTHUG", "name": "Mob Enforcer", "relic": 5}]},
+    {"id": "GRANDMASTERLUKE", "name": "Jedi Master Luke Skywalker", "requirements": [
+      {"base_id": "WEDGEANTILLES", "name": "Wedge Antilles", "relic": 5},
+      {"base_id": "BIGGSDARKLIGHTER", "name": "Biggs Darklighter", "relic": 5},
+      {"base_id": "C3POLEGENDARY", "name": "C-3PO", "relic": 5},
+      {"base_id": "HANSOLO", "name": "Han Solo", "relic": 5},
+      {"base_id": "CHEWBACCALEGENDARY", "name": "Chewbacca", "relic": 5}]},
+    {"id": "GLLEIA", "name": "Grand Master Leia Organa", "requirements": []}
+  ]
+}

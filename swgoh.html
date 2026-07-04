@@ -68,6 +68,14 @@
         border:1px solid var(--line); border-radius:99px; color:var(--accent); cursor:pointer; }
   .summary { white-space:pre-wrap; margin-top:6px; padding:8px 10px; background:var(--bg);
         border:1px solid var(--line); border-radius:8px; font-size:13px; }
+  .plan { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin:16px 0; }
+  .plan h2 { margin:0; font-size:16px; }
+  .plan .tokens { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0; }
+  .plan .tokens label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:3px; }
+  .plan .tokens input { width:130px; }
+  .plan .row { display:flex; gap:8px; margin-top:6px; }
+  .planout { white-space:pre-wrap; margin-top:12px; padding:12px; background:var(--bg);
+        border:1px solid var(--line); border-radius:8px; font-size:14px; display:none; }
 </style>
 </head>
 <body>
@@ -79,6 +87,22 @@
 </header>
 
 <div class="wrap">
+  <div class="plan" id="plan">
+    <h2>🧭 Game Plan</h2>
+    <div class="muted" style="font-size:12px;margin-bottom:2px">
+      A prioritized roadmap from your roster — fastest Galactic Legend path, key gear/relic moves, and farming focus. Add token balances (optional) for spend tips.
+    </div>
+    <div class="tokens">
+      <label>Lightspeed Tokens<input id="tok-lightspeed" type="number" inputmode="numeric" placeholder="e.g. 14000" /></label>
+      <label>Era Shipment Tokens<input id="tok-era" type="number" inputmode="numeric" placeholder="optional" /></label>
+      <label>Crystals<input id="tok-crystals" type="number" inputmode="numeric" placeholder="optional" /></label>
+    </div>
+    <div class="row">
+      <button id="planBtn">Generate my plan</button>
+      <span class="muted" id="planStatus" style="align-self:center"></span>
+    </div>
+    <div class="planout" id="planOut"></div>
+  </div>
   <div class="digest" id="digest" style="display:none"></div>
   <div class="kpis" id="kpis"></div>
 
@@ -336,6 +360,45 @@
     } else {
       $("#pinErr").textContent = "Wrong PIN.";
     }
+  });
+
+  // --- Game Plan: roster + optional tokens -> /api/gameplan (grounded coach) ---
+  const TOK = { lightspeed: "Lightspeed Tokens", era: "Era Shipment Tokens", crystals: "Crystals" };
+  (function hydrateTokens() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("swgohTokens") || "{}");
+      for (const k in TOK) if (saved[k] != null) $("#tok-" + k).value = saved[k];
+    } catch (e) { /* ignore */ }
+  })();
+  function readTokens() {
+    const raw = {}, out = {};
+    for (const k in TOK) {
+      const v = $("#tok-" + k).value.trim();
+      raw[k] = v;
+      if (v) out[TOK[k]] = v;
+    }
+    localStorage.setItem("swgohTokens", JSON.stringify(raw));
+    return out;
+  }
+  $("#planBtn").addEventListener("click", async () => {
+    const st = $("#planStatus"), out = $("#planOut"), btn = $("#planBtn");
+    const tokens = readTokens();
+    st.textContent = "Building your plan… (takes a few seconds)";
+    out.style.display = "none"; btn.disabled = true;
+    try {
+      const r = await fetch("/api/gameplan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tokens }),
+      });
+      if (r.status === 401) { st.textContent = ""; btn.disabled = false; showPin(); return; }
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+      out.textContent = j.plan; out.style.display = "block"; st.textContent = "";
+    } catch (e) {
+      st.textContent = ""; out.style.display = "block";
+      out.textContent = "Couldn't build a plan: " + e.message;
+    }
+    btn.disabled = false;
   });
 </script>
 </body>

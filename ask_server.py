@@ -25,6 +25,8 @@ import urllib.request
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import gameplan
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("ASK_PORT", "8787"))
 # Bind host: 127.0.0.1 for local runs; set ASK_HOST=0.0.0.0 in a container so
@@ -213,6 +215,33 @@ def summarize_video(url):
     return "".join(p.get("text", "") for p in parts)
 
 
+def gemini_text(prompt, key, max_tokens=6144):
+    """Plain text->text Gemini call (used by the Game Plan coach)."""
+    payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
+               "generationConfig": {"maxOutputTokens": max_tokens}}
+    out = post_to_gemini(payload, key)
+    c = out.get("candidates", [])
+    if not c:
+        raise RuntimeError(out.get("error", {}).get("message", "No response."))
+    return "".join(p.get("text", "") for p in c[0].get("content", {}).get("parts", []))
+
+
+def _load_assign_json(path):
+    """Parse a `window.X = {...};` data file into a dict."""
+    with open(path) as f:
+        txt = f.read()
+    return json.loads(txt[txt.index("{"):txt.rindex("}") + 1])
+
+
+def digest_titles():
+    """Recent digest item titles as a current-meta signal (empty if none)."""
+    try:
+        d = _load_assign_json(os.path.join(HERE, "digest.js"))
+        return [i.get("title") for i in d.get("items", []) if i.get("title")][:12]
+    except Exception:  # noqa: BLE001 - digest is optional
+        return []
+
+
 def post_to_gemini(payload, key):
     """Send the request to the Gemini API and return the parsed JSON."""
     url = f"{API_BASE}/{MODEL}:generateContent"
@@ -278,6 +307,24 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:  # image guard / bad input
                 return self._send(400, {"error": str(e)})
             except Exception as e:  # noqa: BLE001 - return the message to the UI
+                return self._send(500, {"error": str(e)})
+
+        if route == "/api/gameplan":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            try:
+                req = self._read_json()
+                key = os.environ.get("GEMINI_API_KEY")
+                if not key:
+                    raise RuntimeError("GEMINI_API_KEY is not set in the server environment")
+                roster = _load_assign_json(os.path.join(HERE, "swgoh_data.js"))
+                plan = gameplan.generate_plan(
+                    roster, gameplan.load_goals(), req.get("tokens") or {},
+                    digest_titles(), gemini_text, key)
+                return self._send(200, {"plan": plan})
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            except Exception as e:  # noqa: BLE001
                 return self._send(500, {"error": str(e)})
 
         if route == "/api/summarize":
