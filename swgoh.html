@@ -9,17 +9,38 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="SWGOH" />
-<meta name="theme-color" content="#0b0e14" />
+<meta name="theme-color" content="#04060d" />
 <link rel="apple-touch-icon" href="https://game-assets.swgoh.gg/textures/tex.charui_leiaendor.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet" />
 <style>
-  :root { --bg:#0b0e14; --card:#151a23; --line:#222b39; --txt:#e6edf3;
-          --muted:#8b97a7; --accent:#ffd54a; --good:#4ade80; }
+  :root { --bg:#04060d; --card:rgba(16,27,47,.74); --line:#22496f; --txt:#e0eaf6;
+          --muted:#8296b3; --accent:#ffcf3f; --holo:#57d0ff; --good:#5ff08a; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--txt);
-         font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
-  header { padding:20px 16px 8px; }
-  h1 { margin:0; font-size:20px; }
+  body { margin:0; color:var(--txt); min-height:100vh;
+         font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         background:radial-gradient(ellipse 100% 70% at 50% -5%, #12294a 0%, #070c17 55%, #04060d 100%) fixed; }
+  body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.55;
+         background-repeat:no-repeat; background-image:
+           radial-gradient(1px 1px at 15% 25%, #d5e8ff, transparent),
+           radial-gradient(1px 1px at 68% 18%, #ffffff, transparent),
+           radial-gradient(1px 1px at 42% 72%, #b6dcff, transparent),
+           radial-gradient(1.4px 1.4px at 82% 58%, #eaf4ff, transparent),
+           radial-gradient(1px 1px at 55% 42%, #cfe6ff, transparent),
+           radial-gradient(1px 1px at 8% 82%, #ffffff, transparent),
+           radial-gradient(1px 1px at 90% 88%, #cfe6ff, transparent); }
+  header { padding:22px 16px 8px; }
+  h1 { margin:0; font-family:'Orbitron',system-ui,sans-serif; font-weight:800; font-size:22px;
+       letter-spacing:.07em; text-transform:uppercase; color:var(--accent);
+       text-shadow:0 0 16px rgba(255,207,63,.38); }
+  h2 { font-family:'Orbitron',system-ui,sans-serif; font-weight:700; text-transform:uppercase;
+       letter-spacing:.05em; color:var(--holo); }
   .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  .kpi, .ask, .plan, .digest, .modalCard, #scoreCard, table {
+       box-shadow:0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(87,208,255,.07);
+       backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); }
+  button:hover, .attachBtn:hover { border-color:var(--accent); }
   .wrap { max-width:1000px; margin:0 auto; padding:0 16px 60px; }
   .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
           gap:10px; margin:16px 0; }
@@ -34,7 +55,8 @@
   table { width:100%; border-collapse:collapse; background:var(--card);
           border:1px solid var(--line); border-radius:12px; overflow:hidden; }
   th, td { text-align:left; padding:9px 11px; border-bottom:1px solid var(--line); white-space:nowrap; }
-  th { color:var(--muted); font-weight:600; font-size:12px; cursor:pointer; user-select:none; }
+  th { color:var(--holo); font-weight:600; font-size:11px; text-transform:uppercase;
+       letter-spacing:.04em; cursor:pointer; user-select:none; }
   td.num, th.num { text-align:right; }
   tr:last-child td { border-bottom:none; }
   a { color:var(--accent); text-decoration:none; }
