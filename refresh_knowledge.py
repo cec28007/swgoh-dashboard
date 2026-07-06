@@ -582,13 +582,44 @@ def write_proposals(proposed, changes, directory=HERE, meta_teams=None):
     return paths
 
 
+def _fact_count(knowledge):
+    return sum(len(v) for v in knowledge.values() if isinstance(v, list))
+
+
+def _is_regression(live_count, proposed_count):
+    """True if a proposal would wipe out real content with nothing — a likely
+    accident (e.g. a placeholder/empty proposal), not a legitimate refresh.
+    (This is exactly what happened when an ad-hoc test script promoted an
+    empty {"goals": [], "knowledge": {}} placeholder over the real files.)"""
+    return live_count > 0 and proposed_count == 0
+
+
 def promote(directory=HERE):
-    """Swap proposed files into the live files. Returns False if none pending."""
+    """Swap proposed files into the live files. Returns False if none pending
+    OR if the proposal looks like it would wipe out real content (regression
+    guard) — the caller should investigate rather than silently lose data."""
     gp = os.path.join(directory, "goals.proposed.json")
     kp = os.path.join(directory, "knowledge.proposed.json")
     mp = os.path.join(directory, "meta_teams.proposed.json")
     if not os.path.exists(gp):
         return False
+
+    live_gl = len(_load(os.path.join(directory, "goals.json"), {}).get("galactic_legends", []))
+    proposed_gl = len(_load(gp, {}).get("galactic_legends", []))
+    if _is_regression(live_gl, proposed_gl):
+        print(f"REFUSING to promote: goals.json has {live_gl} GL(s) live but the "
+              "proposal has 0 — looks like data loss, not a real refresh.", file=sys.stderr)
+        return False
+
+    if os.path.exists(kp):
+        live_facts = _fact_count(_load(os.path.join(directory, "knowledge.json"), {}))
+        proposed_facts = _fact_count(_load(kp, {}))
+        if _is_regression(live_facts, proposed_facts):
+            print(f"REFUSING to promote: knowledge.json has {live_facts} fact(s) live "
+                  "but the proposal has 0 — looks like data loss, not a real refresh.",
+                  file=sys.stderr)
+            return False
+
     shutil.move(gp, os.path.join(directory, "goals.json"))
     if os.path.exists(kp):
         shutil.move(kp, os.path.join(directory, "knowledge.json"))

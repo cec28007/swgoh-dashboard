@@ -387,3 +387,41 @@ class TestPromoteIncludesTeams(unittest.TestCase):
             self.assertTrue(rk.promote(directory=d))
             live = json.load(open(os.path.join(d, "meta_teams.json")))
             self.assertEqual(live["squads"][0]["id"], "new")
+
+
+class TestPromoteRegressionGuard(unittest.TestCase):
+    def test_refuses_to_promote_empty_goals_over_real_goals(self):
+        with tempfile.TemporaryDirectory() as d:
+            json.dump({"galactic_legends": [{"id": "REAL", "name": "Real GL", "requirements": []}]},
+                      open(os.path.join(d, "goals.json"), "w"))
+            json.dump({"whats_meta": [{"text": "x"}]}, open(os.path.join(d, "knowledge.json"), "w"))
+            # simulate an accidental empty proposal (exactly today's incident)
+            rk.write_proposals({"goals": [], "knowledge": {}}, ["oops"], directory=d)
+            ok = rk.promote(directory=d)
+            self.assertFalse(ok)
+            live = json.load(open(os.path.join(d, "goals.json")))
+            self.assertEqual(len(live["galactic_legends"]), 1)  # untouched
+
+    def test_refuses_to_promote_empty_knowledge_over_real_knowledge(self):
+        with tempfile.TemporaryDirectory() as d:
+            json.dump({"galactic_legends": []}, open(os.path.join(d, "goals.json"), "w"))
+            json.dump({"progression_strategy": [{"text": "a"}, {"text": "b"}]},
+                      open(os.path.join(d, "knowledge.json"), "w"))
+            rk.write_proposals({"goals": [], "knowledge": {}}, ["oops"], directory=d)
+            ok = rk.promote(directory=d)
+            self.assertFalse(ok)
+            live = json.load(open(os.path.join(d, "knowledge.json")))
+            self.assertEqual(len(live["progression_strategy"]), 2)  # untouched
+
+    def test_still_promotes_a_real_nonempty_refresh(self):
+        with tempfile.TemporaryDirectory() as d:
+            json.dump({"galactic_legends": [{"id": "OLD", "requirements": []}]},
+                      open(os.path.join(d, "goals.json"), "w"))
+            json.dump({"whats_meta": [{"text": "old"}]}, open(os.path.join(d, "knowledge.json"), "w"))
+            rk.write_proposals(
+                {"goals": [{"id": "NEW", "requirements": []}],
+                 "knowledge": {"whats_meta": [{"text": "new1"}, {"text": "new2"}]}},
+                ["real change"], directory=d)
+            ok = rk.promote(directory=d)
+            self.assertTrue(ok)
+            self.assertEqual(json.load(open(os.path.join(d, "goals.json")))["galactic_legends"][0]["id"], "NEW")
