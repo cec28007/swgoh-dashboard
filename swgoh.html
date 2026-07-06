@@ -206,6 +206,18 @@
     <div id="scoreCard" style="display:none"></div>
     <div class="planout" id="planOut"></div>
   </div>
+  <div class="plan" id="teams">
+    <h2>🛡 Team Builder</h2>
+    <div class="muted" style="font-size:12px;margin-bottom:2px">
+      Suggested squads and fleets from your real roster — what you can field right now, the closest team to complete (and the specific unit that unlocks it), and the best relic/gear investment in a team you already field.
+    </div>
+    <div class="row">
+      <button id="teamsBtn">Suggest my teams</button>
+      <span class="muted" id="teamsStatus" style="align-self:center"></span>
+    </div>
+    <div id="teamsCard" style="display:none"></div>
+    <div class="planout" id="teamsOut"></div>
+  </div>
   <div class="plan" id="store">
     <h2>🛒 Store Check</h2>
     <div class="muted" style="font-size:12px;margin-bottom:2px">
@@ -837,6 +849,46 @@
     } catch (e) {
       st.textContent = ""; out.style.display = "block";
       out.textContent = "Couldn't assess your account: " + e.message;
+    }
+    btn.disabled = false;
+  });
+
+  // --- Team Builder render ---
+  function renderTeamBuilder(j) {
+    const card = $("#teamsCard");
+    const readyLi = (j.ready || []).map(t =>
+      `<li><b>${esc(t.name)}</b> <span class="muted">(${esc(t.kind)})</span></li>`).join("");
+    const almostLi = (j.almost || []).slice(0, 6).map(t => {
+      const gaps = (t.gaps || []).map(g => esc(g.name)).join(", ");
+      return `<li><b>${esc(t.name)}</b> — needs ${gaps || "?"}</li>`;
+    }).join("");
+    const upgLi = (j.upgrade_priorities || []).slice(0, 6).map(u =>
+      `<li><b>${esc(u.name)}</b> — unlocks ${u.teams.length} team(s): ${u.teams.map(esc).join(", ")}</li>`).join("");
+    const strLi = (j.strengthen_priorities || []).slice(0, 6).map(s =>
+      `<li><b>${esc(s.name)}</b> (${esc(s.team)}) — relic R${s.have_relic}→R${s.need_relic}</li>`).join("");
+    card.innerHTML =
+      (readyLi ? `<div class="lev"><div class="muted" style="font-size:12px">✅ Ready to field now</div><ol>${readyLi}</ol></div>` : "") +
+      (almostLi ? `<div class="lev"><div class="muted" style="font-size:12px">🔜 Closest to complete</div><ol>${almostLi}</ol></div>` : "") +
+      (upgLi ? `<div class="lev"><div class="muted" style="font-size:12px">⭐ Highest-leverage units to acquire</div><ol>${upgLi}</ol></div>` : "") +
+      (strLi ? `<div class="lev"><div class="muted" style="font-size:12px">🔧 Best relic/gear investments</div><ol>${strLi}</ol></div>` : "");
+    card.style.display = "block";
+  }
+
+  // --- Team Builder: real roster -> /api/teambuilder ---
+  $("#teamsBtn").addEventListener("click", async () => {
+    const st = $("#teamsStatus"), out = $("#teamsOut"), sc = $("#teamsCard"), btn = $("#teamsBtn");
+    st.textContent = "Building suggestions… (takes a few seconds)";
+    out.style.display = "none"; sc.style.display = "none"; btn.disabled = true;
+    try {
+      const r = await fetch("/api/teambuilder", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      if (r.status === 401) { st.textContent = ""; btn.disabled = false; showPin(); return; }
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+      renderTeamBuilder(j);
+      out.textContent = j.plan || ""; out.style.display = "block"; st.textContent = "";
+    } catch (e) {
+      st.textContent = ""; out.style.display = "block";
+      out.textContent = "Couldn't build team suggestions: " + e.message;
     }
     btn.disabled = false;
   });

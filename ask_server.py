@@ -28,6 +28,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import gameplan
 import gamehealth
+import teambuilder
+import refresh_knowledge
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("ASK_PORT", "8787"))
@@ -499,6 +501,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, parse_inventory_reply(text))
             except ValueError as e:
                 return self._send(400, {"error": str(e)})
+            except Exception as e:  # noqa: BLE001
+                return self._send(500, {"error": str(e)})
+
+        if route == "/api/teambuilder":
+            if not authed(self.headers):
+                return self._send(401, {"error": "locked"})
+            try:
+                key = os.environ.get("GEMINI_API_KEY")
+                if not key:
+                    raise RuntimeError("GEMINI_API_KEY is not set in the server environment")
+                roster = _load_assign_json(os.path.join(HERE, "swgoh_data.js"))
+                result = teambuilder.generate_teams(
+                    roster, gamehealth.load_meta_teams(), gameplan.load_knowledge(),
+                    gemini_text, key, name_map=refresh_knowledge.load_name_map())
+                return self._send(200, result)
             except Exception as e:  # noqa: BLE001
                 return self._send(500, {"error": str(e)})
 
