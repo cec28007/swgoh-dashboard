@@ -4,7 +4,7 @@
   "squads": [
     {
       "id": "rebels_leia",
-      "name": "GL Leia (verified core)",
+      "name": "GL Leia (Old Ben/Kanan variant)",
       "faction": "Rebel",
       "min_relic": 5,
       "modes": [
@@ -459,6 +459,24 @@
         "B2SUPERBATTLEDROID",
         "MAGNAGUARD",
         "STAP"
+      ]
+    },
+    {
+      "id": "gl_leia_jynraddus",
+      "name": "GL Leia (Jyn/Raddus variant)",
+      "faction": "Rebel",
+      "min_relic": 5,
+      "modes": [
+        "gac",
+        "tw",
+        "arena"
+      ],
+      "members": [
+        "GLLEIA",
+        "R2D2_LEGENDARY",
+        "CAPTAINDROGAN",
+        "JYNERSO",
+        "ADMIRALRADDUS"
       ]
     }
   ],
