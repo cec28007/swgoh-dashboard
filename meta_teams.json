@@ -4,7 +4,7 @@
   "squads": [
     {
       "id": "rebels_leia",
-      "name": "Rebels (GL Leia)",
+      "name": "GL Leia (verified core)",
       "faction": "Rebel",
       "min_relic": 5,
       "modes": [
@@ -13,10 +13,10 @@
       ],
       "members": [
         "GLLEIA",
-        "COMMANDERLUKESKYWALKER",
-        "HANSOLO",
-        "CHEWBACCALEGENDARY",
-        "C3POLEGENDARY"
+        "R2D2_LEGENDARY",
+        "CAPTAINDROGAN",
+        "OLDBENKENOBI",
+        "KANANJARRUSS3"
       ]
     },
     {
