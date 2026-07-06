@@ -53,8 +53,8 @@ def fleet_readiness(units, fleet, name_map=None):
         {"base_id": fleet["capital"], "name": cap_name,
          "owned": cap_u is not None, "fieldable": False}]
     return {"id": fleet["id"], "name": fleet["name"], "kind": "fleet",
-            "capital": {"base_id": fleet["capital"], "owned": cap_u is not None,
-                        "fieldable": cap_fieldable},
+            "capital": {"base_id": fleet["capital"], "name": cap_name,
+                        "owned": cap_u is not None, "fieldable": cap_fieldable},
             "ships": ships, "min_ships": need, "ready_ship_count": len(ready_ships),
             "ready": cap_fieldable and len(ready_ships) >= need,
             "gaps": cap_gap + ship_gaps}
@@ -101,8 +101,51 @@ def strengthen_priorities(readiness, top=8):
     return out[:top]
 
 
-def build_team_prompt(roster, readiness, suggestions, upgrade_pri, strengthen_pri, knowledge):
-    ready_lines = [f"- {t['name']} ({t['kind']})" for t in suggestions["ready"]]
+def _team_members(t):
+    """Every base_id 'reserved' by a ready team — the pool it needs at once."""
+    if t["kind"] == "fleet":
+        return ({t["capital"]["base_id"]}
+                | {s["base_id"] for s in t["ships"] if s["fieldable"]})
+    return {m["base_id"] for m in t["members"]}
+
+
+def build_stable_plan(readiness):
+    """The largest set of READY teams where no character/ship is shared between
+    any two — a roster you never have to re-mod or reshuffle between. Greedy:
+    teams least entangled with the rest of the pool go first (maximizes how
+    many teams end up in the plan); ties keep meta_teams.json's curated order."""
+    ready = [t for t in (readiness["squads"] + readiness["fleets"]) if t["ready"]]
+    pool = {t["id"]: _team_members(t) for t in ready}
+    name_of = {b: m["name"] for t in ready
+              for m in (t["members"] if t["kind"] == "squad"
+                        else [t["capital"]] + t["ships"])
+              for b in [m["base_id"]]}
+
+    def entanglement(t):
+        s = pool[t["id"]]
+        return sum(1 for o in ready if o["id"] != t["id"] and s & pool[o["id"]])
+
+    ordered = sorted(ready, key=entanglement)
+    plan, used, left_out = [], set(), []
+    for t in ordered:
+        s = pool[t["id"]]
+        overlap = s & used
+        if overlap:
+            shares_with = [p["name"] for p in plan if pool[p["id"]] & s]
+            left_out.append({"team": t["name"],
+                             "shared_members": sorted(name_of.get(b, b) for b in overlap),
+                             "shares_with": shares_with})
+            continue
+        plan.append(t)
+        used |= s
+    return {"plan": plan, "left_out": left_out}
+
+
+def build_team_prompt(roster, readiness, stable, suggestions, upgrade_pri, strengthen_pri, knowledge):
+    stable_lines = [f"- {t['name']} ({t['kind']})" for t in stable["plan"]]
+    left_out_lines = [f"- {o['team']}: shares {', '.join(o['shared_members'])} with "
+                      f"{', '.join(o['shares_with'])} — would need swapping to use"
+                      for o in stable["left_out"]]
     almost_lines = []
     for t in suggestions["almost"][:10]:
         gap_names = ", ".join(g["name"] for g in t["gaps"])
@@ -112,14 +155,21 @@ def build_team_prompt(roster, readiness, suggestions, upgrade_pri, strengthen_pr
     str_lines = [f"- {s['team']}: relic {s['name']} from R{s['have_relic']} to "
                 f"R{s['need_relic']}" for s in strengthen_pri]
     know_block = gameplan._knowledge_block(knowledge)
+    left_out_block = (("LEFT OUT DUE TO CHARACTER/SHIP OVERLAP (fieldable, but would "
+                       "require swapping units out of a stable-roster team to use):\n"
+                       + "\n".join(left_out_lines) + "\n\n") if left_out_lines else "")
     return (
         "You are a Star Wars: Galaxy of Heroes team-building coach. The data below "
         "is COMPUTED from the real roster and validated meta squads/fleets — do not "
-        "contradict it. Recommend which teams to play now, which to build toward "
-        "next, and which existing teams to strengthen for the best effectiveness "
-        "gain per unit of effort.\n\n"
+        "contradict it. The player wants a STABLE roster — teams that never share a "
+        "character/ship, so nothing needs re-modding or reshuffling between them. "
+        "Recommend which teams to play now, which to build toward next, and which "
+        "existing teams to strengthen for the best effectiveness gain per unit of "
+        "effort.\n\n"
         f"PLAYER: {roster.get('name')} — GP {roster.get('galactic_power')}.\n\n"
-        "READY TO FIELD NOW:\n" + ("\n".join(ready_lines) or "- (none yet)") + "\n\n"
+        "YOUR STABLE ROSTER (no character/ship shared between any two — no swapping "
+        "ever needed):\n" + ("\n".join(stable_lines) or "- (none yet)") + "\n\n"
+        + left_out_block +
         "CLOSEST TO COMPLETE (fewest gaps first):\n"
         + ("\n".join(almost_lines) or "- (none)") + "\n\n"
         "HIGHEST-LEVERAGE NEW UNITS TO ACQUIRE (unlock the most teams):\n"
@@ -127,9 +177,10 @@ def build_team_prompt(roster, readiness, suggestions, upgrade_pri, strengthen_pr
         "BEST RELIC/GEAR INVESTMENTS IN TEAMS YOU ALREADY FIELD:\n"
         + ("\n".join(str_lines) or "- (none)") + "\n"
         + know_block +
-        "\nRespond with: (1) which ready team to lean on right now and where to "
-        "play it (GAC/TW/Fleet Arena), (2) the single best team to build toward "
-        "next and the specific unit to prioritize, (3) the best strengthen-in-place "
+        "\nRespond with: (1) which stable-roster team to lean on right now and where "
+        "to play it (GAC/TW/Fleet Arena) — never suggest swapping a unit between two "
+        "of the stable-roster teams, (2) the single best team to build toward next "
+        "and the specific unit to prioritize, (3) the best strengthen-in-place "
         "investment. Be specific to this roster."
     )
 
@@ -137,10 +188,11 @@ def build_team_prompt(roster, readiness, suggestions, upgrade_pri, strengthen_pr
 def generate_teams(roster, meta_teams, knowledge, gemini_call, key, name_map=None):
     units = roster.get("units", [])
     readiness = build_team_readiness(units, meta_teams, name_map)
+    stable = build_stable_plan(readiness)
     suggestions = rank_team_suggestions(readiness)
     upg = upgrade_priorities(readiness)
     strengthen = strengthen_priorities(readiness)
-    prompt = build_team_prompt(roster, readiness, suggestions, upg, strengthen, knowledge)
-    return {"readiness": readiness, "ready": suggestions["ready"],
+    prompt = build_team_prompt(roster, readiness, stable, suggestions, upg, strengthen, knowledge)
+    return {"readiness": readiness, "ready": stable["plan"], "left_out": stable["left_out"],
             "almost": suggestions["almost"], "upgrade_priorities": upg,
             "strengthen_priorities": strengthen, "plan": gemini_call(prompt, key)}

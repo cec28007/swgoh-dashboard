@@ -209,7 +209,7 @@
   <div class="plan" id="teams">
     <h2>🛡 Team Builder</h2>
     <div class="muted" style="font-size:12px;margin-bottom:2px">
-      Suggested squads and fleets from your real roster — what you can field right now, the closest team to complete (and the specific unit that unlocks it), and the best relic/gear investment in a team you already field.
+      A stable roster from your real roster — teams that never share a character or ship, so nothing needs re-modding or swapping between them. Plus the closest team to complete (and the specific unit that unlocks it), and the best relic/gear investment in a team you already field.
     </div>
     <div class="row">
       <button id="teamsBtn">Suggest my teams</button>
@@ -858,6 +858,8 @@
     const card = $("#teamsCard");
     const readyLi = (j.ready || []).map(t =>
       `<li><b>${esc(t.name)}</b> <span class="muted">(${esc(t.kind)})</span></li>`).join("");
+    const leftOutLi = (j.left_out || []).map(o =>
+      `<li><b>${esc(o.team)}</b> — shares ${o.shared_members.map(esc).join(", ")} with ${o.shares_with.map(esc).join(", ")}</li>`).join("");
     const almostLi = (j.almost || []).slice(0, 6).map(t => {
       const gaps = (t.gaps || []).map(g => esc(g.name)).join(", ");
       return `<li><b>${esc(t.name)}</b> — needs ${gaps || "?"}</li>`;
@@ -867,7 +869,8 @@
     const strLi = (j.strengthen_priorities || []).slice(0, 6).map(s =>
       `<li><b>${esc(s.name)}</b> (${esc(s.team)}) — relic R${s.have_relic}→R${s.need_relic}</li>`).join("");
     card.innerHTML =
-      (readyLi ? `<div class="lev"><div class="muted" style="font-size:12px">✅ Ready to field now</div><ol>${readyLi}</ol></div>` : "") +
+      (readyLi ? `<div class="lev"><div class="muted" style="font-size:12px">✅ Your stable roster (no swapping needed)</div><ol>${readyLi}</ol></div>` : "") +
+      (leftOutLi ? `<div class="lev"><div class="muted" style="font-size:12px">⚠️ Left out — would require swapping</div><ol>${leftOutLi}</ol></div>` : "") +
       (almostLi ? `<div class="lev"><div class="muted" style="font-size:12px">🔜 Closest to complete</div><ol>${almostLi}</ol></div>` : "") +
       (upgLi ? `<div class="lev"><div class="muted" style="font-size:12px">⭐ Highest-leverage units to acquire</div><ol>${upgLi}</ol></div>` : "") +
       (strLi ? `<div class="lev"><div class="muted" style="font-size:12px">🔧 Best relic/gear investments</div><ol>${strLi}</ol></div>` : "");

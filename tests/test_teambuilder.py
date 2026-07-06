@@ -71,6 +71,13 @@ class TestFleetReadiness(unittest.TestCase):
         self.assertTrue(r["ready"])
         self.assertEqual(r["gaps"], [])
 
+    def test_capital_always_carries_a_name_even_when_owned(self):
+        # regression: cap_name was computed but never put on the returned dict
+        units = [_u("ENDURANCE", type="ship"), _u("ETA2", type="ship"),
+                 _u("AHSOKASF", type="ship"), _u("PLOSF", type="ship")]
+        r = tb.fleet_readiness(units, META["fleets"][0])
+        self.assertEqual(r["capital"]["name"], "Endurance")
+
     def test_missing_capital_is_a_gap(self):
         units = [_u("ETA2", type="ship"), _u("AHSOKASF", type="ship"),
                  _u("PLOSF", type="ship")]
@@ -138,10 +145,11 @@ class TestPromptAndGenerate(unittest.TestCase):
                                  "gaps": [], "weak": [], "min_relic": 5, "kind": "squad"}],
                      "fleets": []}
         suggestions = {"ready": readiness["squads"], "almost": []}
+        stable = {"plan": readiness["squads"], "left_out": []}
         p = tb.build_team_prompt({"name": "P", "galactic_power": 7000000}, readiness,
-                                 suggestions, [], [], {})
+                                 stable, suggestions, [], [], {})
         self.assertIn("Ready Squad", p)
-        self.assertIn("READY", p.upper())
+        self.assertIn("STABLE", p.upper())
 
     def test_generate_teams_wires_gemini_and_returns_shape(self):
         roster = {"name": "P", "galactic_power": 7000000, "units": [
@@ -162,3 +170,68 @@ class TestPromptAndGenerate(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _squad_ready(id_, name, member_base_ids):
+    return {"id": id_, "name": name, "kind": "squad", "ready": True, "gaps": [], "weak": [],
+            "members": [{"base_id": b, "name": b.title(), "owned": True,
+                        "stars": 7, "relic": 7, "fieldable": True} for b in member_base_ids]}
+
+
+def _fleet_ready(id_, name, capital, ships):
+    return {"id": id_, "name": name, "kind": "fleet", "ready": True, "gaps": [],
+            "capital": {"base_id": capital, "name": capital.title(), "owned": True, "fieldable": True},
+            "ships": [{"base_id": s, "name": s.title(), "owned": True, "stars": 7,
+                      "fieldable": True} for s in ships]}
+
+
+class TestStablePlan(unittest.TestCase):
+    def test_no_overlap_keeps_every_team(self):
+        readiness = {"squads": [_squad_ready("a", "A", ["U1", "U2"]),
+                                _squad_ready("b", "B", ["U3", "U4"])],
+                    "fleets": []}
+        out = tb.build_stable_plan(readiness)
+        self.assertEqual({t["id"] for t in out["plan"]}, {"a", "b"})
+        self.assertEqual(out["left_out"], [])
+
+    def test_overlapping_team_gets_dropped_not_both(self):
+        readiness = {"squads": [_squad_ready("a", "A", ["U1", "U2"]),
+                                _squad_ready("b", "B", ["U2", "U3"])],  # shares U2
+                    "fleets": []}
+        out = tb.build_stable_plan(readiness)
+        self.assertEqual(len(out["plan"]), 1)
+        self.assertEqual(len(out["left_out"]), 1)
+
+    def test_prefers_keeping_more_teams_overall(self):
+        # C conflicts with both A and B; A and B don't conflict with each other.
+        # Keeping {A, B} (2 teams) beats keeping {C} (1 team).
+        readiness = {"squads": [
+            _squad_ready("a", "A", ["U1"]),
+            _squad_ready("b", "B", ["U2"]),
+            _squad_ready("c", "C", ["U1", "U2"]),
+        ], "fleets": []}
+        out = tb.build_stable_plan(readiness)
+        self.assertEqual({t["id"] for t in out["plan"]}, {"a", "b"})
+
+    def test_left_out_reports_shared_member_names(self):
+        readiness = {"squads": [_squad_ready("a", "A", ["U1", "U2"]),
+                                _squad_ready("b", "B", ["U2", "U3"])],
+                    "fleets": []}
+        out = tb.build_stable_plan(readiness)
+        left = out["left_out"][0]
+        self.assertIn("U2", " ".join(m for m in left["shared_members"]))
+        self.assertTrue(left["shares_with"])
+
+    def test_squad_and_fleet_never_conflict_different_pools(self):
+        readiness = {"squads": [_squad_ready("a", "A", ["U1"])],
+                    "fleets": [_fleet_ready("f", "F", "CAP1", ["S1", "S2"])]}
+        out = tb.build_stable_plan(readiness)
+        self.assertEqual({t["id"] for t in out["plan"]}, {"a", "f"})
+
+    def test_not_ready_teams_are_ignored(self):
+        readiness = {"squads": [
+            _squad_ready("a", "A", ["U1"]),
+            {**_squad_ready("b", "B", ["U2"]), "ready": False},
+        ], "fleets": []}
+        out = tb.build_stable_plan(readiness)
+        self.assertEqual({t["id"] for t in out["plan"]}, {"a"})
