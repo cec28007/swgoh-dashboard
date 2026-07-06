@@ -15,6 +15,12 @@ Two files in the repo, read fresh per request by the coach:
   `source` + `as_of`; the loop may stamp per-unit `source/as_of/confidence`.
 - `knowledge.json` — the meta layer: farming priorities, gear/relic guidance,
   what's-meta. Each item carries `text` + `source` (url) + `confidence`.
+- `meta_teams.json` — squad/fleet compositions the Team Builder scores readiness
+  against. Each entry carries `source` + `confidence`. **Root-cause note:** this
+  file was originally hand-authored from memory with no review gate (unlike
+  goals.json/knowledge.json) — that's why the GL Leia entry was wrong until a
+  player corrected it with real ladder evidence. It's now under the same
+  refresh discipline as everything else (see below), closing that gap.
 
 Git is the history: every approved refresh is a commit → full audit + one-command
 rollback when the community jumps the gun on a rumor.
@@ -37,7 +43,24 @@ rollback when the community jumps the gun on a rumor.
 5. **Approve** — human skims the changelog/diff; `--promote` swaps proposed →
    live, and the change is committed to git (on the Mac, the canonical repo).
 
-**Cadence:** weekly host cron on the box, beside the existing digest cron.
+**Team refresh (meta_teams.json):** same pipeline, member-name resolution
+instead of base_id passthrough — Gemini proposes squads/fleets using real
+character/ship NAMES (it can't reliably produce our internal ids), each name
+is resolved against the live game-data name map, and a squad is dropped
+entirely (not partially kept) if any member fails to resolve. Merging is
+diff-aware: a new `id` is added outright; a proposal matching an existing id
+with a near-identical roster (≤2 members different) updates it in place; a
+proposal matching an existing id but meaningfully different (>2 members
+different) is kept as a **new variant** rather than silently overwriting a
+verified entry — this is exactly the GL Leia Old-Ben/Kanan vs Jyn/Raddus case.
+**On-demand override:** `--add-team "<name>" "<Unit One, Unit Two, ...>"
+[--source "..."]` appends a squad you've personally verified (e.g. real ladder
+evidence) straight to the live file, no proposal step — mirrors `--add-video`'s
+rationale (you vetted it, so the review gate isn't needed).
+
+**Cadence:** weekly host cron on the box (`refresh_knowledge.py`, no args),
+beside the existing digest cron — the team refresh runs as part of the same
+default flow, no separate cron entry needed.
 
 ## Trust boundary
 Research *proposes*; a human *approves*; git *records*. Community info is

@@ -15,6 +15,7 @@ import os
 import re
 import shutil
 import sys
+import unicodedata
 import urllib.request
 from datetime import date
 
@@ -24,7 +25,16 @@ from digest import GEMINI_URL, ASK_MODEL, _extract_json, search_youtube_api
 HERE = os.path.dirname(os.path.abspath(__file__))
 GOALS_PATH = os.path.join(HERE, "goals.json")
 KNOWLEDGE_PATH = os.path.join(HERE, "knowledge.json")
+META_TEAMS_PATH = os.path.join(HERE, "meta_teams.json")
 GAMEDATA_CACHE = os.path.join(HERE, "gamedata_cache.json")
+
+# Squads/fleets that differ from an existing id by more than this many members
+# are a genuinely different team, not a refresh of the same one — kept as a
+# separate variant rather than silently overwriting a verified entry. (The
+# GL Leia Old-Ben/Kanan vs Jyn/Raddus case is exactly this: 4 of 5 differ.)
+VARIANT_DIFF_THRESHOLD = 2
+
+TEAM_DOMAINS = ["swgoh.gg", "swgohevents.com", "gaming-fans.com", "allclash.com"]
 
 TAVILY_URL = "https://api.tavily.com/search"
 TAVILY_API_KEY_ENV = "TAVILY_API_KEY"
@@ -366,6 +376,168 @@ def load_name_map(path=GAMEDATA_CACHE):
     return _load(path, {}).get("names", {})
 
 
+# --------------------------------------------------------------------------- #
+# Team refresh — meta_teams.json (squads/fleets), same discipline as goals.json:
+# gather -> synthesize (names, not base_ids — the model can't reliably produce
+# our internal ids) -> resolve every name against real game data -> merge as a
+# NEW VARIANT rather than overwrite when a proposal meaningfully differs from
+# an existing id -> changelog -> promote. Previously meta_teams.json was
+# hand-authored from memory with no review gate — this closes that gap.
+# --------------------------------------------------------------------------- #
+def _normalize_name(s):
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def _build_reverse_name_map(name_map):
+    """normalized display name -> best base_id (prefers real playable units
+    over event/raid/inherit variants, which share the same display name)."""
+    def better(cur, new):
+        cu, nu = ("_" in cur), ("_" in new)
+        if cu != nu:
+            return new if (cu and not nu) else cur
+        return new if len(new) < len(cur) else cur
+    rev = {}
+    for bid, nm in name_map.items():
+        key = _normalize_name(nm)
+        rev[key] = bid if key not in rev else better(rev[key], bid)
+    return rev
+
+
+def resolve_unit_name(name, name_map, reverse_map=None):
+    """A display name OR an already-valid base_id -> base_id, else None."""
+    if name in name_map:
+        return name
+    rev = reverse_map if reverse_map is not None else _build_reverse_name_map(name_map)
+    return rev.get(_normalize_name(name))
+
+
+def build_team_queries(meta_teams):
+    """Discovery queries (find new meta teams) plus one per existing squad/fleet
+    (find its current best composition — the mechanism that would have caught
+    the wrong GL Leia team if it existed from the start)."""
+    out = [
+        {"kind": "discovery", "query": "SWGOH best GAC meta squads 2026", "domains": TEAM_DOMAINS},
+        {"kind": "discovery", "query": "SWGOH best fleet arena meta teams 2026", "domains": TEAM_DOMAINS},
+    ]
+    for s in meta_teams.get("squads", []):
+        out.append({"kind": "squad", "query": f"{s['name']} SWGOH best team allies squad 2026",
+                    "domains": TEAM_DOMAINS})
+    for f in meta_teams.get("fleets", []):
+        out.append({"kind": "fleet", "query": f"{f['name']} SWGOH fleet best ships 2026",
+                    "domains": TEAM_DOMAINS})
+    return out
+
+
+def build_team_prompt(meta_teams, gathered):
+    lines = []
+    for g in gathered:
+        for r in g.get("results", []):
+            lines.append(f"[{g['kind']}] {r['title']} :: {r['url']}\n{r['content']}")
+    return (
+        "You maintain a Star Wars: Galaxy of Heroes team-composition reference. "
+        "Using the RESEARCH below, propose current best squads/fleets.\n\n"
+        "HARD RULES:\n"
+        "- Express every member as its real, exact in-game CHARACTER OR SHIP NAME "
+        "(e.g. 'Jyn Erso', not a made-up id). Never invent a name you didn't see "
+        "in the research.\n"
+        "- If a team you propose is a genuinely DIFFERENT composition from an "
+        "existing squad of the same concept (e.g. an alternate ally lineup), give "
+        "it a distinguishing name — do not just repeat the old name.\n"
+        "- min_relic is the relic level the squad plays best at (integer 0-9).\n"
+        "- Stamp source (a url from the research) and confidence (high|medium|low) "
+        "on every squad/fleet.\n\n"
+        "Reply with ONLY JSON, no prose:\n"
+        '{"squads": [{"id": "<short_snake_case>", "name": "...", '
+        '"members": ["<exact character name>", ...], "min_relic": <int>, '
+        '"modes": ["gac"|"tw"|"arena"], "source": "...", "confidence": "..."}], '
+        '"fleets": [{"id": "...", "name": "...", "capital": "<exact ship name>", '
+        '"ships": ["<exact ship name>", ...], "min_ships": <int>, '
+        '"source": "...", "confidence": "..."}]}\n\n'
+        f"CURRENT REFERENCE (for context — don't just repeat these unchanged):\n"
+        f"{json.dumps(meta_teams, ensure_ascii=False)[:4000]}\n\n"
+        "RESEARCH:\n" + "\n\n".join(lines)
+    )
+
+
+def parse_team_synthesis(text):
+    d = _extract_json(text)
+    if "squads" not in d:
+        raise ValueError("team synthesis JSON missing 'squads'")
+    d.setdefault("fleets", [])
+    return d
+
+
+def synthesize_teams(meta_teams, gathered, key, gemini_call=gemini_generate_large):
+    prompt = build_team_prompt(meta_teams, gathered)
+    return parse_team_synthesis(gemini_call(prompt, key))
+
+
+def resolve_proposed_squads(squads, name_map):
+    """Resolve every member name to a base_id; drop the whole squad (not just
+    the bad member) if ANY name fails to resolve — a half-resolved team isn't
+    safely usable for readiness checks, it's just unverified content."""
+    reverse_map = _build_reverse_name_map(name_map)
+    resolved, dropped = [], []
+    for s in squads:
+        members, unresolved = [], []
+        for n in s.get("members", []):
+            bid = resolve_unit_name(n, name_map, reverse_map)
+            (members if bid else unresolved).append(bid or n)
+        if unresolved:
+            dropped.append(f"{s.get('name', s.get('id'))}: unresolved member(s) "
+                           f"{', '.join(unresolved)}")
+            continue
+        resolved.append({**s, "members": members})
+    return resolved, dropped
+
+
+def _member_diff_count(a, b):
+    return len(set(a) ^ set(b))
+
+
+def merge_team_proposals(current, proposed_squads):
+    """New id -> add. Same id, near-identical composition -> update in place
+    (a refresh of the same known team). Same id, meaningfully different
+    composition -> add as a NEW variant — never silently overwrite a verified
+    entry with an unverified one."""
+    squads = [dict(s) for s in current.get("squads", [])]
+    by_id = {s["id"]: i for i, s in enumerate(squads)}
+    changes = []
+    for p in proposed_squads:
+        pid = p["id"]
+        if pid not in by_id:
+            squads.append(p)
+            changes.append(f"{p['name']}: new squad added")
+            continue
+        existing = squads[by_id[pid]]
+        if _member_diff_count(existing["members"], p["members"]) <= VARIANT_DIFF_THRESHOLD:
+            squads[by_id[pid]] = {**existing, **p, "members": p["members"]}
+            changes.append(f"{p['name']}: updated")
+        else:
+            variant_id = f"{pid}_{sum(1 for s in squads if s['id'].startswith(pid))}"
+            squads.append({**p, "id": variant_id})
+            changes.append(f"{p['name']}: added as a new VARIANT (kept existing "
+                           f"'{existing['name']}' untouched — compositions differ)")
+    return {"squads": squads, "fleets": current.get("fleets", [])}, changes
+
+
+def add_team(name, member_base_ids, source, directory=HERE, min_relic=5, modes=None):
+    """On-demand: append a squad you've personally verified (e.g. real ladder
+    evidence) straight into the live file — you vetted it, so no proposal step.
+    Mirrors add_video's rationale exactly."""
+    path = os.path.join(directory, "meta_teams.json")
+    meta = _load(path, {"squads": [], "fleets": []})
+    squad = {"id": re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_"),
+             "name": name, "members": member_base_ids, "min_relic": min_relic,
+             "modes": modes or ["gac"], "source": source, "confidence": "high"}
+    meta.setdefault("squads", []).append(squad)
+    with open(path, "w") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False)
+    return squad
+
+
 def add_video(url, gem_key, watcher=watch_video, directory=HERE):
     """On-demand: watch ONE video you found and append its tips straight into
     the live knowledge base (you vetted the source, so no proposal step)."""
@@ -382,7 +554,7 @@ def add_video(url, gem_key, watcher=watch_video, directory=HERE):
     return tips
 
 
-def write_proposals(proposed, changes, directory=HERE):
+def write_proposals(proposed, changes, directory=HERE, meta_teams=None):
     goals_out = {"_note": "PROPOSED GL requirements — review then promote. "
                  "Generated by refresh_knowledge.py.",
                  "as_of": date.today().isoformat(),
@@ -396,23 +568,32 @@ def write_proposals(proposed, changes, directory=HERE):
     know.setdefault("as_of", date.today().isoformat())
     with open(kp, "w") as f:
         json.dump(know, f, indent=2, ensure_ascii=False)
+    paths = {"goals": gp, "knowledge": kp, "changelog": cp}
+    if meta_teams is not None:
+        mp = os.path.join(directory, "meta_teams.proposed.json")
+        with open(mp, "w") as f:
+            json.dump(meta_teams, f, indent=2, ensure_ascii=False)
+        paths["meta_teams"] = mp
     with open(cp, "w") as f:
         f.write(f"# Proposed knowledge changes — {date.today().isoformat()}\n\n")
         f.write("\n".join(f"- {c}" for c in changes) if changes
                 else "- (no structural changes; content/provenance refresh only)")
         f.write("\n\nReview, then apply with: `python3 refresh_knowledge.py --promote`\n")
-    return {"goals": gp, "knowledge": kp, "changelog": cp}
+    return paths
 
 
 def promote(directory=HERE):
     """Swap proposed files into the live files. Returns False if none pending."""
     gp = os.path.join(directory, "goals.proposed.json")
     kp = os.path.join(directory, "knowledge.proposed.json")
+    mp = os.path.join(directory, "meta_teams.proposed.json")
     if not os.path.exists(gp):
         return False
     shutil.move(gp, os.path.join(directory, "goals.json"))
     if os.path.exists(kp):
         shutil.move(kp, os.path.join(directory, "knowledge.json"))
+    if os.path.exists(mp):
+        shutil.move(mp, os.path.join(directory, "meta_teams.json"))
     return True
 
 
@@ -442,6 +623,28 @@ def main(argv=None):
             print("  -", t)
         return 0
 
+    if "--add-team" in argv:
+        i = argv.index("--add-team")
+        if len(argv) < i + 3:
+            print('usage: --add-team "<team name>" "<Unit One, Unit Two, ...>" '
+                  '[--source "..."]', file=sys.stderr)
+            return 2
+        name, members_csv = argv[i + 1], argv[i + 2]
+        source = argv[argv.index("--source") + 1] if "--source" in argv else "player-verified"
+        name_map = load_name_map()
+        reverse_map = _build_reverse_name_map(name_map)
+        member_names = [m.strip() for m in members_csv.split(",") if m.strip()]
+        resolved, unresolved = [], []
+        for n in member_names:
+            bid = resolve_unit_name(n, name_map, reverse_map)
+            (resolved if bid else unresolved).append(bid or n)
+        if unresolved:
+            print("Couldn't resolve: " + ", ".join(unresolved), file=sys.stderr)
+            return 2
+        squad = add_team(name, resolved, source)
+        print(f"added squad '{name}' to meta_teams.json: {resolved} (source: {source})")
+        return 0
+
     tav_key = os.environ.get(TAVILY_API_KEY_ENV, "")
     yt_key = os.environ.get("YOUTUBE_API_KEY", "")
     if not tav_key or not gem_key:
@@ -450,6 +653,7 @@ def main(argv=None):
 
     goals = _load(GOALS_PATH, {}).get("galactic_legends", [])
     knowledge = _load(KNOWLEDGE_PATH, {})
+    current_meta = _load(META_TEAMS_PATH, {"squads": [], "fleets": []})
     name_map = load_name_map()
 
     gathered = gather(build_research_queries(goals), tav_key)
@@ -471,8 +675,21 @@ def main(argv=None):
     if dropped:
         changes.append(f"({len(dropped)} unverifiable entries dropped — see below)")
         changes += [f"  dropped: {d}" for d in dropped[:30]]
-    paths = write_proposals(proposed, changes)
-    print(f"proposal written ({len(changes)} change line(s), {len(dropped)} dropped):")
+
+    # Team refresh — same discipline now applied to meta_teams.json.
+    team_gathered = gather(build_team_queries(current_meta), tav_key)
+    team_proposed = synthesize_teams(current_meta, team_gathered, gem_key)
+    resolved_squads, team_dropped = resolve_proposed_squads(
+        team_proposed.get("squads", []), name_map)
+    merged_meta, team_changes = merge_team_proposals(current_meta, resolved_squads)
+    changes += team_changes
+    if team_dropped:
+        changes.append(f"({len(team_dropped)} team entries dropped — see below)")
+        changes += [f"  dropped: {d}" for d in team_dropped[:30]]
+
+    paths = write_proposals(proposed, changes, meta_teams=merged_meta)
+    print(f"proposal written ({len(changes)} change line(s), "
+          f"{len(dropped) + len(team_dropped)} dropped):")
     for c in changes[:25]:
         print("  -", c)
     print("review:", paths["changelog"])

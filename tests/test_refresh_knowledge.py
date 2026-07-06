@@ -249,3 +249,141 @@ class TestSynthesize(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+NAME_MAP_TEAMS = {"GLLEIA": "Leia Organa", "R2D2_LEGENDARY": "R2-D2",
+                  "CAPTAINDROGAN": "Captain Drogan", "JYNERSO": "Jyn Erso",
+                  "ADMIRALRADDUS": "Admiral Raddus", "OLDBENKENOBI": "Obi-Wan Kenobi (Old Ben)",
+                  "KANANJARRUSS3": "Kanan Jarrus", "BOSSK": "Bossk",
+                  "JANGOFETT": "Jango Fett", "THEMANDALORIAN": "The Mandalorian"}
+
+
+class TestNameResolution(unittest.TestCase):
+    def test_resolves_exact_name(self):
+        self.assertEqual(rk.resolve_unit_name("Jyn Erso", NAME_MAP_TEAMS), "JYNERSO")
+
+    def test_resolves_case_and_accent_insensitive(self):
+        self.assertEqual(rk.resolve_unit_name("jyn erso", NAME_MAP_TEAMS), "JYNERSO")
+
+    def test_passthrough_already_valid_base_id(self):
+        self.assertEqual(rk.resolve_unit_name("JYNERSO", NAME_MAP_TEAMS), "JYNERSO")
+
+    def test_unresolvable_name_returns_none(self):
+        self.assertIsNone(rk.resolve_unit_name("Not A Real Unit", NAME_MAP_TEAMS))
+
+
+class TestTeamQueries(unittest.TestCase):
+    def test_includes_discovery_and_per_squad_queries(self):
+        meta = {"squads": [{"id": "leia", "name": "GL Leia"}], "fleets": []}
+        qs = rk.build_team_queries(meta)
+        self.assertTrue(any(q["kind"] == "discovery" for q in qs))
+        self.assertTrue(any("GL Leia" in q["query"] for q in qs))
+
+
+class TestParseTeamSynthesis(unittest.TestCase):
+    def test_extracts_squad_list(self):
+        text = ('```json\n{"squads": [{"id": "leia", "name": "GL Leia", '
+                '"members": ["Leia Organa", "R2-D2"], "min_relic": 5, '
+                '"modes": ["gac"], "source": "u", "confidence": "high"}], '
+                '"fleets": []}\n```')
+        d = rk.parse_team_synthesis(text)
+        self.assertEqual(d["squads"][0]["id"], "leia")
+
+    def test_rejects_missing_squads_key(self):
+        with self.assertRaises(ValueError):
+            rk.parse_team_synthesis('{"fleets": []}')
+
+
+class TestResolveProposedSquads(unittest.TestCase):
+    def test_resolves_all_members_to_base_ids(self):
+        squads = [{"id": "leia", "name": "GL Leia", "min_relic": 5, "modes": ["gac"],
+                  "members": ["Leia Organa", "R2-D2", "Captain Drogan", "Jyn Erso",
+                              "Admiral Raddus"], "source": "u", "confidence": "high"}]
+        resolved, dropped = rk.resolve_proposed_squads(squads, NAME_MAP_TEAMS)
+        self.assertEqual(len(resolved), 1)
+        self.assertEqual(resolved[0]["members"],
+                         ["GLLEIA", "R2D2_LEGENDARY", "CAPTAINDROGAN", "JYNERSO", "ADMIRALRADDUS"])
+        self.assertEqual(dropped, [])
+
+    def test_drops_squad_with_any_unresolvable_member(self):
+        squads = [{"id": "x", "name": "Bad Squad", "min_relic": 5, "modes": [],
+                  "members": ["Jyn Erso", "Totally Fake Unit"], "source": "u", "confidence": "low"}]
+        resolved, dropped = rk.resolve_proposed_squads(squads, NAME_MAP_TEAMS)
+        self.assertEqual(resolved, [])
+        self.assertEqual(len(dropped), 1)
+        self.assertIn("Totally Fake Unit", dropped[0])
+
+
+class TestMergeTeamProposals(unittest.TestCase):
+    CURRENT = {"squads": [{"id": "leia", "name": "GL Leia (Old Ben/Kanan)", "min_relic": 5,
+                          "modes": ["gac"],
+                          "members": ["GLLEIA", "R2D2_LEGENDARY", "CAPTAINDROGAN",
+                                      "OLDBENKENOBI", "KANANJARRUSS3"]}],
+               "fleets": []}
+
+    def test_new_squad_id_is_added(self):
+        proposed = [{"id": "bh", "name": "Bounty Hunters", "min_relic": 5, "modes": ["gac"],
+                    "members": ["BOSSK", "JANGOFETT", "THEMANDALORIAN"]}]
+        merged, changes = rk.merge_team_proposals(self.CURRENT, proposed)
+        ids = [s["id"] for s in merged["squads"]]
+        self.assertIn("leia", ids)
+        self.assertIn("bh", ids)
+        self.assertTrue(any("added" in c.lower() for c in changes))
+
+    def test_near_identical_composition_updates_in_place(self):
+        # differs by 1 member only -> treated as a refresh of the same team
+        proposed = [{"id": "leia", "name": "GL Leia (Old Ben/Kanan)", "min_relic": 6,
+                    "modes": ["gac"],
+                    "members": ["GLLEIA", "R2D2_LEGENDARY", "CAPTAINDROGAN",
+                                "OLDBENKENOBI", "KANANJARRUSS3"]}]
+        merged, changes = rk.merge_team_proposals(self.CURRENT, proposed)
+        self.assertEqual(len(merged["squads"]), 1)
+        self.assertEqual(merged["squads"][0]["min_relic"], 6)
+
+    def test_meaningfully_different_composition_becomes_a_new_variant(self):
+        # same id, but 4-5 members differ -> a genuinely different team, must
+        # NOT silently overwrite the existing verified entry
+        proposed = [{"id": "leia", "name": "GL Leia (Jyn/Raddus)", "min_relic": 5,
+                    "modes": ["gac"],
+                    "members": ["GLLEIA", "R2D2_LEGENDARY", "CAPTAINDROGAN",
+                                "JYNERSO", "ADMIRALRADDUS"]}]
+        merged, changes = rk.merge_team_proposals(self.CURRENT, proposed)
+        self.assertEqual(len(merged["squads"]), 2)
+        # original untouched
+        original = [s for s in merged["squads"] if s["name"] == "GL Leia (Old Ben/Kanan)"][0]
+        self.assertEqual(original["members"][3], "OLDBENKENOBI")
+        self.assertTrue(any("variant" in c.lower() for c in changes))
+
+
+class TestAddTeam(unittest.TestCase):
+    def test_appends_player_verified_squad_to_live_file(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "meta_teams.json")
+            json.dump({"squads": [], "fleets": []}, open(path, "w"))
+            squad = rk.add_team("GL Leia (Jyn/Raddus)",
+                                ["GLLEIA", "R2D2_LEGENDARY", "CAPTAINDROGAN", "JYNERSO", "ADMIRALRADDUS"],
+                                source="player-verified arena screenshot 2026-07-06",
+                                directory=d)
+            self.assertEqual(squad["confidence"], "high")
+            live = json.load(open(path))
+            self.assertEqual(len(live["squads"]), 1)
+            self.assertEqual(live["squads"][0]["source"],
+                             "player-verified arena screenshot 2026-07-06")
+
+
+class TestPromoteIncludesTeams(unittest.TestCase):
+    def test_promote_swaps_meta_teams_when_present(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            json.dump({"squads": [{"id": "old"}], "fleets": []},
+                      open(os.path.join(d, "meta_teams.json"), "w"))
+            json.dump({"galactic_legends": []}, open(os.path.join(d, "goals.json"), "w"))
+            json.dump({}, open(os.path.join(d, "knowledge.json"), "w"))
+            json.dump({"squads": [{"id": "new"}], "fleets": []},
+                      open(os.path.join(d, "meta_teams.proposed.json"), "w"))
+            proposed = {"goals": [], "knowledge": {}}
+            rk.write_proposals(proposed, ["test"], directory=d)
+            self.assertTrue(rk.promote(directory=d))
+            live = json.load(open(os.path.join(d, "meta_teams.json")))
+            self.assertEqual(live["squads"][0]["id"], "new")
